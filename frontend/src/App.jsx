@@ -1,12 +1,13 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./public/Login"; // Your Login.jsx file
+
+const Login = lazy(() => import("./public/Login"));
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Login />} />
         {/* Add more routes here */}
       </Routes>
     </Router>

@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
 
-// Import images
+// Import suggestion & favorite images
 import casualImage from "../assets/image/casual.jpg";
 import summerImage from "../assets/image/summer.jpg";
 import fav1 from "../assets/image/fav1.jpg";
@@ -17,6 +17,7 @@ import { MdCheckroom } from "react-icons/md";
 const Dashboard = () => {
   const navigate = useNavigate();
 
+  // Favorites
   const favorites = [
     { id: 1, img: fav1, name: "Classic Casual" },
     { id: 2, img: fav2, name: "Party Night" },
@@ -24,119 +25,169 @@ const Dashboard = () => {
     { id: 4, img: fav4, name: "Winter Layers" },
   ];
 
+  // Multi-upload state
+  const [items, setItems] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const handleUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newItems = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      type: "Unknown", // Later: AI detection
+    }));
+    setItems((prev) => [...prev, ...newItems]);
+    setShowPreview(false);
+  };
+
+  const handleAnalyze = () => {
+    if (items.length === 0) {
+      alert("Please upload some items first!");
+      return;
+    }
+    setShowPreview(true);
+  };
+
   return (
     <>
       <Header />
 
-      <div className="font-sans text-gray-800 bg-gray-50 min-h-screen">
+      <div className="font-sans text-gray-800 bg-gray-50 min-h-screen p-4 md:p-8">
         {/* Welcome Section */}
-        <section className="bg-cyan-100 p-6 rounded-xl mx-4 md:mx-16 mt-6">
-          <h1 className="text-2xl font-bold mb-2">👋 Welcome back, Anjali!</h1>
-          <p className="text-gray-700">
-            Here’s a quick look at your fashion world today.
+        <section className="bg-cyan-100 p-6 rounded-xl shadow-md mb-8">
+          <h1 className="text-3xl font-bold mb-2">👋 Welcome back, Anjali!</h1>
+          <p className="text-gray-700 text-lg">
+            Upload your clothing items and see smart outfit suggestions.
           </p>
         </section>
 
-        {/* Stats */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-6 mx-4 md:mx-16 mt-6">
-          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center">
-            <FaTshirt className="text-cyan-500 text-3xl mb-2" />
+        {/* ================== UPLOAD IMAGES SECTION ================== */}
+        <section className="bg-white rounded-xl shadow p-6 mb-10">
+          <h2 className="text-2xl font-bold mb-4">Upload Clothing Items</h2>
+
+          {/* Drag & Drop Area */}
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center mb-4 hover:border-cyan-500 transition">
+            <p className="text-gray-500 mb-2">
+              Drag & drop your images here, or click to upload
+            </p>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleUpload}
+              className="cursor-pointer"
+            />
+          </div>
+
+          {/* Uploaded Images Preview (Scrollable Grid) */}
+          {items.length > 0 && (
+            <div className="overflow-x-auto py-2">
+              <div className="flex gap-4">
+                {items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-gray-100 rounded-xl shadow p-2 flex-shrink-0 w-48 flex flex-col items-center"
+                  >
+                    <img
+                      src={item.preview}
+                      alt={`Item ${idx}`}
+                      className="w-full h-48 object-contain mb-2"
+                    />
+                    <p className="text-sm font-semibold">{item.type}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Analyze Outfit Button */}
+          <div className="flex justify-center mt-6">
+            <button
+              className="bg-cyan-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-cyan-600 transition"
+              onClick={handleAnalyze}
+            >
+              Analyze Outfit
+            </button>
+          </div>
+        </section>
+
+        {/* ================== VIRTUAL OUTFIT PREVIEW ================== */}
+        {showPreview && (
+          <section className="bg-white rounded-xl shadow p-6 mb-10">
+            <h2 className="text-2xl font-bold mb-4">
+              Suggested Outfit Preview
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              {items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="bg-gray-50 rounded-xl shadow p-2 flex flex-col items-center"
+                >
+                  <img
+                    src={item.preview}
+                    alt={`Preview ${idx}`}
+                    className="w-full h-48 object-contain mb-2"
+                  />
+                  <p className="text-sm font-semibold">{item.type}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-gray-600">
+              This is a suggested combination of your uploaded items.
+            </p>
+          </section>
+        )}
+
+        {/* ================== STATS ================== */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
+            <FaTshirt className="text-cyan-500 text-4xl mb-2" />
             <h2 className="text-2xl font-bold">120</h2>
             <p className="text-gray-600">Outfits Added</p>
           </div>
-          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center">
-            <FaBoxOpen className="text-cyan-500 text-3xl mb-2" />
+          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
+            <FaBoxOpen className="text-cyan-500 text-4xl mb-2" />
             <h2 className="text-2xl font-bold">350</h2>
             <p className="text-gray-600">Closet Items</p>
           </div>
-          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center">
-            <MdCheckroom className="text-cyan-500 text-3xl mb-2" />
+          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
+            <MdCheckroom className="text-cyan-500 text-4xl mb-2" />
             <p className="text-sm text-gray-600">Last Fit Checked</p>
-            <button className="mt-2 text-sm bg-cyan-500 text-white px-3 py-1 rounded hover:bg-cyan-600">
+            <button className="mt-3 text-sm bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600 transition">
               Re-try this Fit
             </button>
           </div>
-          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center">
-            <FaStar className="text-cyan-500 text-3xl mb-2" />
+          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
+            <FaStar className="text-cyan-500 text-4xl mb-2" />
             <h2 className="text-2xl font-bold">45</h2>
             <p className="text-gray-600">Favorites Saved</p>
           </div>
         </section>
 
-        {/* Suggestions */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mx-4 md:mx-16 my-10">
-          <div className="md:col-span-2">
-            <h2 className="text-xl font-bold mb-4">
-              Today’s Smart Suggestions
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Suggestion 1 */}
-              <div className="bg-white rounded-xl shadow overflow-hidden">
-                <img
-                  src={casualImage}
-                  alt="Casual Friday Look"
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-bold">Casual Friday Look</h3>
-                  <p className="text-gray-600 text-sm">
-                    Blazer + Jeans + Sneakers
-                  </p>
-                  <button className="mt-3 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition">
-                    Try this Fit
-                  </button>
-                </div>
-              </div>
-
-              {/* Suggestion 2 */}
-              <div className="bg-white rounded-xl shadow overflow-hidden">
-                <img
-                  src={summerImage}
-                  alt="Summer Day Outfit"
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-bold">Summer Day Outfit</h3>
-                  <p className="text-gray-600 text-sm">
-                    Floral Dress + Sandals
-                  </p>
-                  <button className="mt-3 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition">
-                    Try this Fit
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div>
-            <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-            <ul className="space-y-3 text-sm text-gray-700">
-              <li>🧥 You added a new jacket yesterday.</li>
-              <li>🎉 You created a new fit: Party Night.</li>
-              <li>🌸 You favorited Summer Dress.</li>
-            </ul>
-          </div>
-        </section>
-
-        {/* Favorites Highlight */}
-        <section className="mx-4 md:mx-16 mb-12">
-          <h2 className="text-xl font-bold mb-4">Favorites Highlight</h2>
+        {/* ================== FAVORITES ================== */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-4">Favorites Highlight</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {favorites.map((fav) => (
               <div
                 key={fav.id}
-                className="bg-white rounded-xl shadow cursor-pointer hover:shadow-lg transition"
+                className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition transform hover:scale-105"
                 onClick={() => navigate(`/outfit/${fav.id}`)}
               >
                 <img
                   src={fav.img}
                   alt={fav.name}
-                  className="w-full h-72 object-contain bg-gray-100"
+                  className="w-full h-80 object-contain bg-gray-100"
                 />
                 <div className="p-4 text-center">
-                  <h3 className="font-bold">{fav.name}</h3>
-                  <button className="mt-2 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition">
+                  <h3 className="font-bold text-lg">{fav.name}</h3>
+                  <button
+                    className="mt-3 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      alert(`You selected ${fav.name}!`);
+                    }}
+                  >
                     Wear Again
                   </button>
                 </div>

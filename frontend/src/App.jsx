@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 const LandingPage = lazy(() => import("./public/LandingPage"));
 const AboutUs = lazy(() => import("./public/AboutUs"));
 const ContactUs = lazy(() => import("./public/ContactUs"));
+const Dashboard = lazy(() => import("./public/Dashboard"));
 
 function App() {
   return (
@@ -13,6 +14,8 @@ function App() {
         <Route path="/LandingPage" element={<LandingPage />} />
         <Route path="/AboutUs" element={<AboutUs />} />
         <Route path="/ContactUs" element={<ContactUs />} />
+        <Route path="/Dashboard" element={<Dashboard />} />
+
         {/* Add more routes here */}
       </Routes>
     </Router>

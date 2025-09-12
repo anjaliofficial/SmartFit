@@ -1,15 +1,29 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
 
 // Import images
 import casualImage from "../assets/image/casual.jpg";
-import summerImage from "../assets/image/summer.jpg"; // 👈 make sure you add this in assets
+import summerImage from "../assets/image/summer.jpg";
+import fav1 from "../assets/image/fav1.jpg";
+import fav2 from "../assets/image/fav2.jpg";
+import fav3 from "../assets/image/fav3.jpg";
+import fav4 from "../assets/image/fav4.jpg";
 
 import { FaTshirt, FaBoxOpen, FaStar } from "react-icons/fa";
 import { MdCheckroom } from "react-icons/md";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
+  const favorites = [
+    { id: 1, img: fav1, name: "Classic Casual" },
+    { id: 2, img: fav2, name: "Party Night" },
+    { id: 3, img: fav3, name: "Summer Dress" },
+    { id: 4, img: fav4, name: "Winter Layers" },
+  ];
+
   return (
     <>
       <Header />
@@ -105,14 +119,29 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Favorites Highlight (Text only, no images) */}
+        {/* Favorites Highlight */}
         <section className="mx-4 md:mx-16 mb-12">
           <h2 className="text-xl font-bold mb-4">Favorites Highlight</h2>
-          <div className="bg-white p-6 rounded-xl shadow">
-            <p className="text-gray-700">
-              ⭐ You have <span className="font-bold">45 favorites</span>. Check
-              them out in your closet anytime!
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {favorites.map((fav) => (
+              <div
+                key={fav.id}
+                className="bg-white rounded-xl shadow cursor-pointer hover:shadow-lg transition"
+                onClick={() => navigate(`/outfit/${fav.id}`)}
+              >
+                <img
+                  src={fav.img}
+                  alt={fav.name}
+                  className="w-full h-72 object-contain bg-gray-100"
+                />
+                <div className="p-4 text-center">
+                  <h3 className="font-bold">{fav.name}</h3>
+                  <button className="mt-2 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition">
+                    Wear Again
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       </div>

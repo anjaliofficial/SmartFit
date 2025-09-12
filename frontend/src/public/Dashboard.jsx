@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
 
-// Import suggestion & favorite images
-import casualImage from "../assets/image/casual.jpg";
-import summerImage from "../assets/image/summer.jpg";
 import fav1 from "../assets/image/fav1.jpg";
 import fav2 from "../assets/image/fav2.jpg";
 import fav3 from "../assets/image/fav3.jpg";
@@ -17,7 +14,6 @@ import { MdCheckroom } from "react-icons/md";
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  // Favorites
   const favorites = [
     { id: 1, img: fav1, name: "Classic Casual" },
     { id: 2, img: fav2, name: "Party Night" },
@@ -25,26 +21,101 @@ const Dashboard = () => {
     { id: 4, img: fav4, name: "Winter Layers" },
   ];
 
-  // Multi-upload state
   const [items, setItems] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
 
+  // ---------------- Simulated AI detection ----------------
+  const detectType = (fileName) => {
+    const name = fileName.toLowerCase();
+    if (
+      name.includes("shirt") ||
+      name.includes("tshirt") ||
+      name.includes("top")
+    )
+      return "Shirt";
+    if (
+      name.includes("pant") ||
+      name.includes("jeans") ||
+      name.includes("trouser")
+    )
+      return "Pants";
+    if (
+      name.includes("shoe") ||
+      name.includes("sneaker") ||
+      name.includes("boot")
+    )
+      return "Shoes";
+    if (name.includes("jacket") || name.includes("coat")) return "Jacket";
+    return "Accessory";
+  };
+
+  const detectColor = (fileName) => {
+    const name = fileName.toLowerCase();
+    if (name.includes("blue")) return "Blue";
+    if (name.includes("red")) return "Red";
+    if (name.includes("white")) return "White";
+    if (name.includes("black")) return "Black";
+    if (name.includes("beige")) return "Beige";
+    return "Neutral";
+  };
+
+  // Color compatibility rules
+  const compatible = {
+    Blue: ["Black", "White", "Beige", "Neutral"],
+    Red: ["Black", "White", "Neutral"],
+    White: ["Black", "Blue", "Red", "Beige", "Neutral"],
+    Black: ["Blue", "Red", "White", "Beige", "Neutral"],
+    Beige: ["Blue", "White", "Black", "Neutral"],
+    Neutral: ["Blue", "Red", "White", "Black", "Beige", "Neutral"],
+  };
+
+  // ---------------- Handle File Upload ----------------
   const handleUpload = (e) => {
     const files = Array.from(e.target.files);
     const newItems = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
-      type: "Unknown", // Later: AI detection
+      type: detectType(file.name),
+      color: detectColor(file.name),
     }));
     setItems((prev) => [...prev, ...newItems]);
     setShowPreview(false);
+    setSuggestions([]);
   };
 
+  // ---------------- Generate Smart Outfit Suggestions ----------------
   const handleAnalyze = () => {
     if (items.length === 0) {
       alert("Please upload some items first!");
       return;
     }
+
+    const shirts = items.filter((i) => i.type === "Shirt");
+    const pants = items.filter((i) => i.type === "Pants");
+    const shoes = items.filter((i) => i.type === "Shoes");
+    const jackets = items.filter((i) => i.type === "Jacket");
+    const accessories = items.filter((i) => i.type === "Accessory");
+
+    const combos = [];
+
+    shirts.forEach((shirt) => {
+      pants.forEach((pant) => {
+        shoes.forEach((shoe) => {
+          // Check color compatibility
+          if (
+            compatible[shirt.color]?.includes(pant.color) &&
+            compatible[shirt.color]?.includes(shoe.color)
+          ) {
+            const jacket = jackets[0] || null;
+            const accessory = accessories[0] || null;
+            combos.push({ shirt, pant, shoe, jacket, accessory });
+          }
+        });
+      });
+    });
+
+    setSuggestions(combos);
     setShowPreview(true);
   };
 
@@ -53,7 +124,7 @@ const Dashboard = () => {
       <Header />
 
       <div className="font-sans text-gray-800 bg-gray-50 min-h-screen p-4 md:p-8">
-        {/* Welcome Section */}
+        {/* Welcome */}
         <section className="bg-cyan-100 p-6 rounded-xl shadow-md mb-8">
           <h1 className="text-3xl font-bold mb-2">👋 Welcome back, Anjali!</h1>
           <p className="text-gray-700 text-lg">
@@ -61,14 +132,12 @@ const Dashboard = () => {
           </p>
         </section>
 
-        {/* ================== UPLOAD IMAGES SECTION ================== */}
+        {/* Upload Section */}
         <section className="bg-white rounded-xl shadow p-6 mb-10">
           <h2 className="text-2xl font-bold mb-4">Upload Clothing Items</h2>
-
-          {/* Drag & Drop Area */}
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center mb-4 hover:border-cyan-500 transition">
             <p className="text-gray-500 mb-2">
-              Drag & drop your images here, or click to upload
+              Drag & drop images here or click to upload
             </p>
             <input
               type="file"
@@ -79,7 +148,6 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Uploaded Images Preview (Scrollable Grid) */}
           {items.length > 0 && (
             <div className="overflow-x-auto py-2">
               <div className="flex gap-4">
@@ -93,14 +161,15 @@ const Dashboard = () => {
                       alt={`Item ${idx}`}
                       className="w-full h-48 object-contain mb-2"
                     />
-                    <p className="text-sm font-semibold">{item.type}</p>
+                    <p className="text-sm font-semibold">
+                      {item.type} ({item.color})
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Analyze Outfit Button */}
           <div className="flex justify-center mt-6">
             <button
               className="bg-cyan-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-cyan-600 transition"
@@ -111,34 +180,59 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* ================== VIRTUAL OUTFIT PREVIEW ================== */}
-        {showPreview && (
+        {/* Smart Outfit Suggestions */}
+        {showPreview && suggestions.length > 0 && (
           <section className="bg-white rounded-xl shadow p-6 mb-10">
             <h2 className="text-2xl font-bold mb-4">
-              Suggested Outfit Preview
+              Smart Outfit Suggestions
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {items.map((item, idx) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {suggestions.map((combo, idx) => (
                 <div
                   key={idx}
-                  className="bg-gray-50 rounded-xl shadow p-2 flex flex-col items-center"
+                  className="bg-gray-50 rounded-xl shadow p-4 flex flex-col items-center"
                 >
-                  <img
-                    src={item.preview}
-                    alt={`Preview ${idx}`}
-                    className="w-full h-48 object-contain mb-2"
-                  />
-                  <p className="text-sm font-semibold">{item.type}</p>
+                  <div className="flex gap-2 mb-2">
+                    {[
+                      combo.shirt,
+                      combo.pant,
+                      combo.shoe,
+                      combo.jacket,
+                      combo.accessory,
+                    ].map(
+                      (item, i) =>
+                        item && (
+                          <img
+                            key={i}
+                            src={item.preview}
+                            alt={item.type}
+                            className="w-24 h-24 object-contain rounded"
+                          />
+                        )
+                    )}
+                  </div>
+                  <p className="text-gray-600 text-sm text-center">
+                    {combo.shirt.type} ({combo.shirt.color}) + {combo.pant.type}{" "}
+                    ({combo.pant.color}) + {combo.shoe.type} ({combo.shoe.color}
+                    )
+                    {combo.jacket
+                      ? ` + ${combo.jacket.type} (${combo.jacket.color})`
+                      : ""}
+                    {combo.accessory
+                      ? ` + ${combo.accessory.type} (${combo.accessory.color})`
+                      : ""}
+                  </p>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-gray-600">
-              This is a suggested combination of your uploaded items.
+              These are smart outfit combinations based on type and color
+              compatibility.
             </p>
           </section>
         )}
 
-        {/* ================== STATS ================== */}
+        {/* Stats */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
             <FaTshirt className="text-cyan-500 text-4xl mb-2" />
@@ -164,7 +258,7 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* ================== FAVORITES ================== */}
+        {/* Favorites */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-4">Favorites Highlight</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -25,7 +25,6 @@ const Dashboard = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
 
-  // ---------------- Simulated AI detection ----------------
   const detectType = (fileName) => {
     const name = fileName.toLowerCase();
     if (
@@ -60,7 +59,6 @@ const Dashboard = () => {
     return "Neutral";
   };
 
-  // Color compatibility rules
   const compatible = {
     Blue: ["Black", "White", "Beige", "Neutral"],
     Red: ["Black", "White", "Neutral"],
@@ -70,7 +68,6 @@ const Dashboard = () => {
     Neutral: ["Blue", "Red", "White", "Black", "Beige", "Neutral"],
   };
 
-  // ---------------- Handle File Upload ----------------
   const handleUpload = (e) => {
     const files = Array.from(e.target.files);
     const newItems = files.map((file) => ({
@@ -84,7 +81,6 @@ const Dashboard = () => {
     setSuggestions([]);
   };
 
-  // ---------------- Generate Smart Outfit Suggestions ----------------
   const handleAnalyze = () => {
     if (items.length === 0) {
       alert("Please upload some items first!");
@@ -196,7 +192,8 @@ const Dashboard = () => {
               {suggestions.map((combo) => (
                 <div
                   key={combo.id}
-                  className="bg-gray-50 rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition"
+                  className="bg-gray-50 rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition cursor-pointer"
+                  onClick={() => navigate(`/outfit/${combo.id}`)}
                 >
                   <div className="flex gap-2 mb-2">
                     {[
@@ -229,25 +226,31 @@ const Dashboard = () => {
                       : ""}
                   </p>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate(`/outfit/${combo.id}`)}
                       className="bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/outfit/${combo.id}`);
+                      }}
                     >
                       Save
                     </button>
                     <button
-                      onClick={() => alert("Wearing this outfit today!")}
                       className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        alert("Wearing this outfit today!");
+                      }}
                     >
                       Wear Now
                     </button>
                     <button
-                      onClick={() =>
-                        alert("Discarded. Generating new suggestion...")
-                      }
                       className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        alert("Discarded. Generating new suggestion...");
+                      }}
                     >
                       Discard
                     </button>
@@ -258,7 +261,7 @@ const Dashboard = () => {
           </section>
         )}
 
-        {/* Stats */}
+        {/* Stats Section */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
             <FaTshirt className="text-cyan-500 text-4xl mb-2" />
@@ -291,7 +294,6 @@ const Dashboard = () => {
         </section>
 
         {/* Favorites Highlight */}
-        {/* Favorites Highlight */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-4">Favorites Highlight</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -299,7 +301,7 @@ const Dashboard = () => {
               <div
                 key={fav.id}
                 className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition transform hover:scale-105"
-                onClick={() => navigate("/saved-outfits")} // ✅ fixed
+                onClick={() => navigate(`/outfit/fav-${fav.id}`)}
               >
                 <img
                   src={fav.img}
@@ -312,7 +314,7 @@ const Dashboard = () => {
                     className="mt-3 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate("/saved-outfits"); // ✅ fixed
+                      navigate(`/outfit/fav-${fav.id}`);
                     }}
                   >
                     View in Favorites

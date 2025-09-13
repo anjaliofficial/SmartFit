@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/header";
@@ -21,10 +22,11 @@ const Dashboard = () => {
     { id: 4, img: fav4, name: "Winter Layers" },
   ];
 
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState([]); // optional: keep for analysis if needed
   const [suggestions, setSuggestions] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Optional analysis functions (keep if you want smart suggestions on dashboard)
   const detectType = (fileName) => {
     const name = fileName.toLowerCase();
     if (
@@ -66,19 +68,6 @@ const Dashboard = () => {
     Black: ["Blue", "Red", "White", "Beige", "Neutral"],
     Beige: ["Blue", "White", "Black", "Neutral"],
     Neutral: ["Blue", "Red", "White", "Black", "Beige", "Neutral"],
-  };
-
-  const handleUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newItems = files.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-      type: detectType(file.name),
-      color: detectColor(file.name),
-    }));
-    setItems((prev) => [...prev, ...newItems]);
-    setShowPreview(false);
-    setSuggestions([]);
   };
 
   const handleAnalyze = () => {
@@ -126,7 +115,7 @@ const Dashboard = () => {
       <Header />
 
       <div className="font-sans text-gray-800 bg-gray-50 min-h-screen p-4 md:p-8">
-        {/* Welcome */}
+        {/* Welcome Section */}
         <section className="bg-cyan-100 p-6 rounded-xl shadow-md mb-8">
           <h1 className="text-3xl font-bold mb-2">👋 Welcome back, Anjali!</h1>
           <p className="text-gray-700 text-lg">
@@ -134,55 +123,18 @@ const Dashboard = () => {
           </p>
         </section>
 
-        {/* Upload Section */}
-        <section className="bg-white rounded-xl shadow p-6 mb-10">
-          <h2 className="text-2xl font-bold mb-4">Upload Clothing Items</h2>
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center mb-4 hover:border-cyan-500 transition">
-            <p className="text-gray-500 mb-2">
-              Drag & drop images here or click to upload
-            </p>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleUpload}
-              className="cursor-pointer"
-            />
-          </div>
-
-          {items.length > 0 && (
-            <div className="overflow-x-auto py-2">
-              <div className="flex gap-4">
-                {items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-gray-100 rounded-xl shadow p-2 flex-shrink-0 w-48 flex flex-col items-center"
-                  >
-                    <img
-                      src={item.preview}
-                      alt={`Item ${idx}`}
-                      className="w-full h-48 object-contain mb-2"
-                    />
-                    <p className="text-sm font-semibold">
-                      {item.type} ({item.color})
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-center mt-6">
-            <button
-              className="bg-cyan-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-cyan-600 transition"
-              onClick={handleAnalyze}
-            >
-              Analyze Outfit
-            </button>
-          </div>
+        {/* Go to Upload Page Button */}
+        <section className="bg-white rounded-xl shadow p-6 mb-10 text-center">
+          <h2 className="text-2xl font-bold mb-4">Add New Clothing Items</h2>
+          <button
+            className="bg-cyan-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-cyan-600 transition"
+            onClick={() => navigate("/upload")}
+          >
+            Go to Upload Page
+          </button>
         </section>
 
-        {/* Smart Outfit Suggestions */}
+        {/* Optional: Smart Outfit Suggestions */}
         {showPreview && suggestions.length > 0 && (
           <section className="bg-white rounded-xl shadow p-6 mb-10">
             <h2 className="text-2xl font-bold mb-4">

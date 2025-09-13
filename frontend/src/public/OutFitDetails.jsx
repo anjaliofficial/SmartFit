@@ -1,14 +1,48 @@
 // src/pages/OutfitDetails.jsx
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
 
+// Example data (replace with API or context/store in real app)
+import fav1 from "../assets/image/fav1.jpg";
+import fav2 from "../assets/image/fav2.jpg";
+import fav3 from "../assets/image/fav3.jpg";
+import fav4 from "../assets/image/fav4.jpg";
+
+const favoriteOutfits = [
+  {
+    id: "fav-1",
+    name: "Classic Casual",
+    items: [{ img: fav1, type: "Shirt", color: "Blue" }],
+  },
+  {
+    id: "fav-2",
+    name: "Party Night",
+    items: [{ img: fav2, type: "Dress", color: "Red" }],
+  },
+  {
+    id: "fav-3",
+    name: "Summer Dress",
+    items: [{ img: fav3, type: "Dress", color: "White" }],
+  },
+  {
+    id: "fav-4",
+    name: "Winter Layers",
+    items: [{ img: fav4, type: "Jacket", color: "Black" }],
+  },
+];
+
 const OutfitDetails = () => {
-  const { state } = useLocation();
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  if (!state?.outfit) {
+  // Fetch outfit by ID (from favorites or AI suggestions)
+  const outfit =
+    favoriteOutfits.find((f) => f.id === id) ||
+    JSON.parse(localStorage.getItem("aiOutfits"))?.find((f) => f.id === id);
+
+  if (!outfit) {
     return (
       <div className="p-6">
         <p>No outfit found.</p>
@@ -21,8 +55,6 @@ const OutfitDetails = () => {
       </div>
     );
   }
-
-  const outfit = state.outfit;
 
   return (
     <>

@@ -102,14 +102,20 @@ const Dashboard = () => {
     shirts.forEach((shirt) => {
       pants.forEach((pant) => {
         shoes.forEach((shoe) => {
-          // Check color compatibility
           if (
             compatible[shirt.color]?.includes(pant.color) &&
             compatible[shirt.color]?.includes(shoe.color)
           ) {
             const jacket = jackets[0] || null;
             const accessory = accessories[0] || null;
-            combos.push({ shirt, pant, shoe, jacket, accessory });
+            combos.push({
+              id: combos.length + 100,
+              shirt,
+              pant,
+              shoe,
+              jacket,
+              accessory,
+            });
           }
         });
       });
@@ -187,10 +193,10 @@ const Dashboard = () => {
               Smart Outfit Suggestions
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {suggestions.map((combo, idx) => (
+              {suggestions.map((combo) => (
                 <div
-                  key={idx}
-                  className="bg-gray-50 rounded-xl shadow p-4 flex flex-col items-center"
+                  key={combo.id}
+                  className="bg-gray-50 rounded-xl shadow p-4 flex flex-col items-center hover:shadow-lg transition"
                 >
                   <div className="flex gap-2 mb-2">
                     {[
@@ -206,12 +212,12 @@ const Dashboard = () => {
                             key={i}
                             src={item.preview}
                             alt={item.type}
-                            className="w-24 h-24 object-contain rounded"
+                            className="w-20 h-20 object-contain rounded"
                           />
                         )
                     )}
                   </div>
-                  <p className="text-gray-600 text-sm text-center">
+                  <p className="text-gray-600 text-sm text-center mb-3">
                     {combo.shirt.type} ({combo.shirt.color}) + {combo.pant.type}{" "}
                     ({combo.pant.color}) + {combo.shoe.type} ({combo.shoe.color}
                     )
@@ -222,13 +228,33 @@ const Dashboard = () => {
                       ? ` + ${combo.accessory.type} (${combo.accessory.color})`
                       : ""}
                   </p>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate(`/outfit/${combo.id}`)}
+                      className="bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => alert("Wearing this outfit today!")}
+                      className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    >
+                      Wear Now
+                    </button>
+                    <button
+                      onClick={() =>
+                        alert("Discarded. Generating new suggestion...")
+                      }
+                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                    >
+                      Discard
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-gray-600">
-              These are smart outfit combinations based on type and color
-              compatibility.
-            </p>
           </section>
         )}
 
@@ -239,11 +265,22 @@ const Dashboard = () => {
             <h2 className="text-2xl font-bold">120</h2>
             <p className="text-gray-600">Outfits Added</p>
           </div>
+
           <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
             <FaBoxOpen className="text-cyan-500 text-4xl mb-2" />
             <h2 className="text-2xl font-bold">350</h2>
             <p className="text-gray-600">Closet Items</p>
           </div>
+
+          <div
+            className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition cursor-pointer"
+            onClick={() => navigate("/saved-outfits")}
+          >
+            <FaStar className="text-cyan-500 text-4xl mb-2" />
+            <h2 className="text-2xl font-bold">45</h2>
+            <p className="text-gray-600">Favorites Saved</p>
+          </div>
+
           <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
             <MdCheckroom className="text-cyan-500 text-4xl mb-2" />
             <p className="text-sm text-gray-600">Last Fit Checked</p>
@@ -251,14 +288,9 @@ const Dashboard = () => {
               Re-try this Fit
             </button>
           </div>
-          <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
-            <FaStar className="text-cyan-500 text-4xl mb-2" />
-            <h2 className="text-2xl font-bold">45</h2>
-            <p className="text-gray-600">Favorites Saved</p>
-          </div>
         </section>
 
-        {/* Favorites */}
+        {/* Favorites Highlight */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-4">Favorites Highlight</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -266,7 +298,7 @@ const Dashboard = () => {
               <div
                 key={fav.id}
                 className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition transform hover:scale-105"
-                onClick={() => navigate(`/outfit/${fav.id}`)}
+                onClick={() => navigate(`/savedoutfits`)}
               >
                 <img
                   src={fav.img}
@@ -279,10 +311,10 @@ const Dashboard = () => {
                     className="mt-3 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition"
                     onClick={(e) => {
                       e.stopPropagation();
-                      alert(`You selected ${fav.name}!`);
+                      navigate(`/saved-outfits`);
                     }}
                   >
-                    Wear Again
+                    View in Favorites
                   </button>
                 </div>
               </div>

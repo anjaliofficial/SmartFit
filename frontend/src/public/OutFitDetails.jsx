@@ -1,59 +1,19 @@
+// src/pages/OutfitDetails.jsx
 import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-
-// Example favorite outfits data
-const favorites = [
-  {
-    id: 1,
-    name: "Classic Casual",
-    items: [
-      { type: "Shirt", color: "Blue", img: "/assets/image/fav1.jpg" },
-      { type: "Pants", color: "Black", img: "/assets/image/fav1.jpg" },
-      { type: "Shoes", color: "White", img: "/assets/image/fav1.jpg" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Party Night",
-    items: [
-      { type: "Shirt", color: "Red", img: "/assets/image/fav2.jpg" },
-      { type: "Pants", color: "Black", img: "/assets/image/fav2.jpg" },
-      { type: "Shoes", color: "Black", img: "/assets/image/fav2.jpg" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Summer Dress",
-    items: [
-      { type: "Dress", color: "White", img: "/assets/image/fav3.jpg" },
-      { type: "Shoes", color: "Beige", img: "/assets/image/fav3.jpg" },
-    ],
-  },
-  {
-    id: 4,
-    name: "Winter Layers",
-    items: [
-      { type: "Jacket", color: "Black", img: "/assets/image/fav4.jpg" },
-      { type: "Pants", color: "Blue", img: "/assets/image/fav4.jpg" },
-      { type: "Shoes", color: "Black", img: "/assets/image/fav4.jpg" },
-    ],
-  },
-];
+import { useLocation, useNavigate } from "react-router-dom";
+import Header from "../components/header";
+import Footer from "../components/footer";
 
 const OutfitDetails = () => {
-  const { id } = useParams();
+  const { state } = useLocation();
   const navigate = useNavigate();
 
-  const outfit = favorites.find((fav) => fav.id === parseInt(id));
-
-  if (!outfit) {
+  if (!state?.outfit) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Outfit not found!</h1>
+      <div className="p-6">
+        <p>No outfit found.</p>
         <button
-          className="bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600"
+          className="bg-cyan-500 text-white px-4 py-2 rounded mt-4"
           onClick={() => navigate("/dashboard")}
         >
           Back to Dashboard
@@ -61,6 +21,8 @@ const OutfitDetails = () => {
       </div>
     );
   }
+
+  const outfit = state.outfit;
 
   return (
     <>

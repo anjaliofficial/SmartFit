@@ -6,7 +6,7 @@ const AboutUs = lazy(() => import("./public/AboutUs"));
 const ContactUs = lazy(() => import("./public/ContactUs"));
 const Dashboard = lazy(() => import("./public/Dashboard"));
 const OutfitDetails = lazy(() => import("./public/OutFitDetails"));
-
+const SaveOutfit = lazy(() => import("./public/SaveOutfit"));
 function App() {
   return (
     <Router>
@@ -17,6 +17,7 @@ function App() {
         <Route path="/ContactUs" element={<ContactUs />} />
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/outfit/:id" element={<OutfitDetails />} />
+        <Route path="/saveoutfit" element={<SaveOutfit />} />
 
         {/* Add more routes here */}
       </Routes>

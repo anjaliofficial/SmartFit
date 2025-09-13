@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import ProfilePage from "./public/ProfilePage";
 
 const LandingPage = lazy(() => import("./public/LandingPage"));
 const AboutUs = lazy(() => import("./public/AboutUs"));
@@ -7,6 +8,7 @@ const ContactUs = lazy(() => import("./public/ContactUs"));
 const Dashboard = lazy(() => import("./public/Dashboard"));
 const OutfitDetails = lazy(() => import("./public/OutFitDetails"));
 const SaveOutfits = lazy(() => import("./public/SaveOutfits"));
+const ProfilePage = lazy(() => import("./public/ProfilePage"));
 function App() {
   return (
     <Router>
@@ -19,6 +21,7 @@ function App() {
           <Route path="/Dashboard" element={<Dashboard />} />
           <Route path="/outfit/:id" element={<OutfitDetails />} />
           <Route path="/saved-outfits" element={<SaveOutfits />} />
+          <Route path="/profilepage" element={<ProfilePage />} />
           {/* ✅ fixed */}
         </Routes>
       </Suspense>

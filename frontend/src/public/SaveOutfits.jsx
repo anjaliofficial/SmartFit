@@ -4,15 +4,14 @@ import Header from "../components/header";
 import Footer from "../components/footer";
 
 // Example outfits (replace with backend/localStorage later)
-import outfit1 from "../assets/outfit1.jpg";
-import outfit2 from "../assets/outfit2.jpg";
-import outfit3 from "../assets/outfit3.jpg";
-import outfit4 from "../assets/outfit4.jpg";
+import outfit1 from "../assets/image/fav1.jpg";
+import outfit2 from "../assets/image/fav2.jpg";
+import outfit3 from "../assets/image/fav3.jpg";
+import outfit4 from "../assets/image/fav4.jpg";
 
 const SavedOutfits = () => {
   const navigate = useNavigate();
 
-  // State for saved outfits
   const [savedOutfits, setSavedOutfits] = useState([
     { id: 1, name: "Casual Look", img: outfit1 },
     { id: 2, name: "Office Wear", img: outfit2 },
@@ -20,13 +19,13 @@ const SavedOutfits = () => {
     { id: 4, name: "Traditional Look", img: outfit4 },
   ]);
 
-  // Add new outfit (example: random outfit from list)
+  // Add new outfit
   const handleSaveOutfit = () => {
     const newId = savedOutfits.length + 1;
     const newOutfit = {
       id: newId,
       name: `New Outfit ${newId}`,
-      img: outfit1, // default image (can change later)
+      img: outfit1, // default image, can replace later
     };
     setSavedOutfits([...savedOutfits, newOutfit]);
   };
@@ -49,7 +48,7 @@ const SavedOutfits = () => {
         <div className="text-center mb-8">
           <button
             onClick={handleSaveOutfit}
-            className="bg-cyan-500 text-white px-6 py-3 rounded-xl hover:bg-cyan-600 shadow"
+            className="bg-cyan-500 text-white px-6 py-3 rounded-xl hover:bg-cyan-600 shadow transition"
           >
             + Save New Outfit
           </button>

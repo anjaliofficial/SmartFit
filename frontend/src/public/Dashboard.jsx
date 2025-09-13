@@ -291,6 +291,7 @@ const Dashboard = () => {
         </section>
 
         {/* Favorites Highlight */}
+        {/* Favorites Highlight */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-4">Favorites Highlight</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -298,7 +299,7 @@ const Dashboard = () => {
               <div
                 key={fav.id}
                 className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition transform hover:scale-105"
-                onClick={() => navigate(`/savedoutfits`)}
+                onClick={() => navigate("/saved-outfits")} // ✅ fixed
               >
                 <img
                   src={fav.img}
@@ -311,7 +312,7 @@ const Dashboard = () => {
                     className="mt-3 w-full border border-cyan-500 text-cyan-500 px-4 py-2 rounded hover:bg-cyan-50 transition"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/saved-outfits`);
+                      navigate("/saved-outfits"); // ✅ fixed
                     }}
                   >
                     View in Favorites

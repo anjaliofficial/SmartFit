@@ -1,7 +1,7 @@
 // src/pages/OutfitDetails.jsx
 import React, { useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Header from "../components/header";
+import Header from "../components/HeaderAfterLogin";
 import Footer from "../components/footer";
 import { SavedOutfitsContext } from "../context/SavedOutfitsContext";
 

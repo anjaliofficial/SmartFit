@@ -1,7 +1,7 @@
 // src/pages/OutfitAnalysisPage.jsx
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import Header from "../components/header";
+import Header from "../components/HeaderAfterLogin";
 import Footer from "../components/footer";
 
 const OutfitAnalysisPage = () => {

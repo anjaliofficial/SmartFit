@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SavedOutfitsProvider } from "./context/SavedOutfitsContext"; // import provider
-import Login from "./public/Login"; // your Login.jsx file
+
 
 // Lazy imports
 const LandingPage = lazy(() => import("./public/LandingPage"));
@@ -16,6 +16,9 @@ const UploadImage = lazy(() => import("./public/UploadImage"));
 const OutfitRecommendationPage = lazy(() =>
   import("./public/OutfitRecommendations")
 );
+const Login = lazy(() => import("./public/Login"));
+const Signup = lazy(() => import("./public/Signup"));
+const ForgetPassword = lazy(() => import("./public/ForgetPassword"));
 
 function App() {
   return (
@@ -38,6 +41,9 @@ function App() {
               path="/outfitrecommendations"
               element={<OutfitRecommendationPage />}
             />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgetpassword" element={<ForgetPassword />} />
           </Routes>
         </Suspense>
       </SavedOutfitsProvider>

@@ -1,14 +1,14 @@
 import React from "react";
 import { FcGoogle } from "react-icons/fc";
-import Digital from "../assets/image/digital.png";
+import DigitalImage from "../assets/image/register.png"; // replace with your image path
 
-const Login = () => {
+const Signup = () => {
   return (
     <div className="h-screen flex overflow-hidden">
       {/* Left Side - Image */}
-      <div className="hidden md:flex w-1/2 items-center justify-center">
+      <div className="hidden md:flex w-1/2 items-center justify-center ">
         <img
-          src={Digital}
+          src={DigitalImage}
           alt="Digital Closet"
           className="h-full w-auto object-contain"
         />
@@ -17,9 +17,11 @@ const Login = () => {
       {/* Right Side - Form */}
       <div className="flex w-full md:w-1/2 items-center justify-center px-8 py-12">
         <div className="max-w-md w-full">
-          <h2 className="text-3xl font-bold text-gray-800">Welcome Back!</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+            Create Your Account
+          </h2>
           <p className="text-gray-500 mb-6">
-            Login to manage your digital closet
+            Join SmartFit and start managing your closet.
           </p>
 
           {/* Form */}
@@ -48,17 +50,23 @@ const Login = () => {
               />
             </div>
 
-            <div className="flex justify-end">
-              <a href="/ForgetPassword" className="text-sm text-cyan-600 hover:underline">
-                Forgot your Password?
-              </a>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="Confirm your password"
+                required
+              />
             </div>
 
             <button
               type="submit"
               className="w-full bg-cyan-500 text-white py-2 rounded-lg hover:bg-cyan-600 transition-colors"
             >
-              Log In
+              Sign Up
             </button>
           </form>
 
@@ -79,11 +87,11 @@ const Login = () => {
             </span>
           </button>
 
-          {/* Sign Up */}
+          {/* Login link */}
           <p className="text-center text-gray-600 mt-6 text-sm">
-            Do not have an account?{" "}
-            <a href="/Signup" className="text-cyan-600 hover:underline">
-              Sign Up
+            Already have an account?{" "}
+            <a href="/LogIn" className="text-cyan-600 hover:underline">
+              Log In
             </a>
           </p>
         </div>
@@ -92,4 +100,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;

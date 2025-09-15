@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SavedOutfitsProvider } from "./context/SavedOutfitsContext"; // import provider
+import Login from "./public/Login"; // your Login.jsx file
 
 // Lazy imports
 const LandingPage = lazy(() => import("./public/LandingPage"));
@@ -22,6 +23,7 @@ function App() {
       <SavedOutfitsProvider>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>
+            <Route path="/login" element={<Login />} />
             <Route path="/" element={<LandingPage />} />
             <Route path="/landingpage" element={<LandingPage />} />
             <Route path="/aboutus" element={<AboutUs />} />

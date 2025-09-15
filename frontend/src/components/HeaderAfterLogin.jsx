@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUserCircle,
@@ -12,20 +12,9 @@ import logo from "../assets/image/logo.png";
 
 const Header = () => {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState("");
-
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      setIsLoggedIn(true);
-      setUsername(JSON.parse(user).name || "User");
-    }
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-    setIsLoggedIn(false);
     navigate("/landingpage");
   };
 
@@ -40,80 +29,44 @@ const Header = () => {
           <img src={logo} alt="Smart Fit Logo" className="h-12 w-12" />
         </div>
 
-        {/* Nav Links */}
+        {/* Menu (always visible) */}
         <div className="hidden md:flex items-center space-x-8">
-          <a
-            href="/landingpage"
-            className="hover:text-cyan-600 transition-colors"
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"
           >
-            Home
-          </a>
-          <a href="/aboutus" className="hover:text-cyan-600 transition-colors">
-            About Us
-          </a>
-          <a
-            href="/contactus"
-            className="hover:text-cyan-600 transition-colors"
+            <FaTachometerAlt /> Dashboard
+          </button>
+          <button
+            onClick={() => navigate("/saved-outfits")}
+            className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"
           >
-            Contact Us
-          </a>
-
-          {/* Right Side */}
-          {!isLoggedIn ? (
-            <button
-              onClick={() => navigate("/profilepage")}
-              className="bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors"
-            >
-              Login / Signup
-            </button>
-          ) : (
-            <div className="relative group">
-              {/* User Dropdown */}
-              <button className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
-                <FaUserCircle className="text-xl text-gray-700" />
-                <span className="font-semibold text-gray-700">{username}</span>
-              </button>
-
-              <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg hidden group-hover:block">
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  <FaTachometerAlt /> Dashboard
-                </button>
-                <button
-                  onClick={() => navigate("/saved-outfits")}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  <FaStar /> Saved Outfits
-                </button>
-                <button
-                  onClick={() => navigate("/profilepage")}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  <FaUserCircle /> Profile
-                </button>
-                <button
-                  onClick={() => navigate("/settings")}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  <FaCogs /> Settings
-                </button>
-                <button
-                  onClick={() => alert("Notifications coming soon!")}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  <FaBell /> Notifications
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                >
-                  <FaSignOutAlt /> Logout
-                </button>
-              </div>
-            </div>
-          )}
+            <FaStar /> Saved Outfits
+          </button>
+          <button
+            onClick={() => navigate("/profilepage")}
+            className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"
+          >
+            <FaUserCircle /> Profile
+          </button>
+          <button
+            onClick={() => navigate("/settings")}
+            className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"
+          >
+            <FaCogs /> Settings
+          </button>
+          <button
+            onClick={() => alert("Notifications coming soon!")}
+            className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"
+          >
+            <FaBell /> Notifications
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-red-600 hover:text-red-700"
+          >
+            <FaSignOutAlt /> Logout
+          </button>
         </div>
       </div>
     </header>

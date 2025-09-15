@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/header";
+import Header from "../components/HeaderAfterLogin";
 import Footer from "../components/footer";
 
 import fav1 from "../assets/image/fav1.jpg";

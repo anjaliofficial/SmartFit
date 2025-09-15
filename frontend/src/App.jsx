@@ -2,7 +2,6 @@ import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SavedOutfitsProvider } from "./context/SavedOutfitsContext"; // import provider
 
-
 // Lazy imports
 const LandingPage = lazy(() => import("./public/LandingPage"));
 const AboutUs = lazy(() => import("./public/AboutUs"));
@@ -16,9 +15,12 @@ const UploadImage = lazy(() => import("./public/UploadImage"));
 const OutfitRecommendationPage = lazy(() =>
   import("./public/OutfitRecommendations")
 );
+
 const Login = lazy(() => import("./public/Login"));
 const Signup = lazy(() => import("./public/Signup"));
 const ForgetPassword = lazy(() => import("./public/ForgetPassword"));
+
+const SettingsPage = lazy(() => import("./public/SettingsPage"));
 
 function App() {
   return (
@@ -44,6 +46,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgetpassword" element={<ForgetPassword />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </Suspense>
       </SavedOutfitsProvider>

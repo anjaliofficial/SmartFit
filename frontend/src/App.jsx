@@ -12,6 +12,9 @@ const SaveOutfits = lazy(() => import("./public/SaveOutfits"));
 const ProfilePage = lazy(() => import("./public/ProfilePage"));
 const OutfitAnalysisPage = lazy(() => import("./public/OutfitAnalysisPage"));
 const UploadImage = lazy(() => import("./public/UploadImage"));
+const OutfitRecommendationPage = lazy(() =>
+  import("./public/OutfitRecommendations")
+);
 
 function App() {
   return (
@@ -29,6 +32,10 @@ function App() {
             <Route path="/profilepage" element={<ProfilePage />} />
             <Route path="/uploadimage" element={<UploadImage />} />
             <Route path="/outfitanalysis" element={<OutfitAnalysisPage />} />
+            <Route
+              path="/outfitrecommendations"
+              element={<OutfitRecommendationPage />}
+            />
           </Routes>
         </Suspense>
       </SavedOutfitsProvider>

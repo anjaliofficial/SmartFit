@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { FaMoon, FaBell, FaUserEdit, FaSave } from "react-icons/fa";
+import HeaderAfterLogin from "../components/HeaderAfterLogin";
+import Footer from "../components/footer";
 
 const Settings = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -6,58 +9,103 @@ const Settings = () => {
   const [username, setUsername] = useState("User123");
 
   const handleSave = () => {
-    alert("Settings saved successfully!");
+    alert("✅ Settings saved successfully!");
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Settings</h1>
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <HeaderAfterLogin />
 
-      {/* Profile Section */}
-      <div className="mb-6 p-4 border rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-3">Profile</h2>
-        <label className="block mb-2">
-          Username:
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-2 border rounded mt-1"
-          />
-        </label>
-      </div>
+      <main className="flex-grow p-10 max-w-6xl mx-auto w-full">
+        <h1 className="text-4xl font-bold mb-10 text-gray-800">⚙️ Settings</h1>
 
-      {/* Preferences */}
-      <div className="mb-6 p-4 border rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-3">Preferences</h2>
+        <div className="grid gap-10">
+          {/* Profile Section */}
+          <div className="p-10 bg-white rounded-3xl shadow-lg hover:shadow-xl transition w-full">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-gray-700">
+              <FaUserEdit /> Profile
+            </h2>
+            <label className="block">
+              <span className="text-lg text-gray-600">Username</span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full p-4 border rounded-2xl mt-3 text-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+              />
+            </label>
+          </div>
 
-        <div className="flex items-center justify-between mb-3">
-          <span>Dark Mode</span>
-          <input
-            type="checkbox"
-            checked={darkMode}
-            onChange={() => setDarkMode(!darkMode)}
-            className="w-5 h-5"
-          />
+          {/* Preferences */}
+          <div className="p-10 bg-white rounded-3xl shadow-lg hover:shadow-xl transition w-full">
+            <h2 className="text-2xl font-bold mb-6 text-gray-700">
+              Preferences
+            </h2>
+
+            <div className="flex items-center justify-between py-4 border-b last:border-0">
+              <span className="flex items-center gap-3 text-gray-700 text-lg">
+                <FaMoon /> Dark Mode
+              </span>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={darkMode}
+                  onChange={() => setDarkMode(!darkMode)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-14 h-7 rounded-full p-1 transition-colors ${
+                    darkMode ? "bg-cyan-600" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                      darkMode ? "translate-x-7" : "translate-x-0"
+                    }`}
+                  />
+                </div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between py-4">
+              <span className="flex items-center gap-3 text-gray-700 text-lg">
+                <FaBell /> Enable Notifications
+              </span>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifications}
+                  onChange={() => setNotifications(!notifications)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-14 h-7 rounded-full p-1 transition-colors ${
+                    notifications ? "bg-cyan-600" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                      notifications ? "translate-x-7" : "translate-x-0"
+                    }`}
+                  />
+                </div>
+              </label>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <span>Enable Notifications</span>
-          <input
-            type="checkbox"
-            checked={notifications}
-            onChange={() => setNotifications(!notifications)}
-            className="w-5 h-5"
-          />
+        {/* Save Button */}
+        <div className="mt-10 flex justify-center">
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-3 bg-cyan-600 text-white px-8 py-4 rounded-2xl shadow-lg hover:bg-cyan-700 transition text-lg font-semibold"
+          >
+            <FaSave /> Save Changes
+          </button>
         </div>
-      </div>
+      </main>
 
-      <button
-        onClick={handleSave}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-      >
-        Save Changes
-      </button>
+      <Footer />
     </div>
   );
 };

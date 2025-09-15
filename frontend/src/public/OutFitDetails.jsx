@@ -1,10 +1,11 @@
 // src/pages/OutfitDetails.jsx
-import React from "react";
+import React, { useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/header";
 import Footer from "../components/footer";
+import { SavedOutfitsContext } from "../context/SavedOutfitsContext";
 
-// Example data (replace with API or context/store in real app)
+// Example static favorites
 import fav1 from "../assets/image/fav1.jpg";
 import fav2 from "../assets/image/fav2.jpg";
 import fav3 from "../assets/image/fav3.jpg";
@@ -36,25 +37,40 @@ const favoriteOutfits = [
 const OutfitDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { savedOutfits, saveOutfit } = useContext(SavedOutfitsContext);
 
-  // Fetch outfit by ID (from favorites or AI suggestions)
+  // Fetch outfit from context savedOutfits or fallback favorites
   const outfit =
-    favoriteOutfits.find((f) => f.id === id) ||
-    JSON.parse(localStorage.getItem("aiOutfits"))?.find((f) => f.id === id);
+    savedOutfits.find((f) => f.id.toString() === id) ||
+    favoriteOutfits.find((f) => f.id === id);
 
   if (!outfit) {
     return (
       <div className="p-6">
-        <p>No outfit found.</p>
+        <p className="text-gray-700">No outfit found.</p>
         <button
           className="bg-cyan-500 text-white px-4 py-2 rounded mt-4"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/")}
         >
           Back to Dashboard
         </button>
       </div>
     );
   }
+
+  const handleSave = () => {
+    // Prevent duplicate saves
+    if (!savedOutfits.some((o) => o.id === outfit.id)) {
+      saveOutfit(outfit);
+      alert("Outfit saved to favorites!");
+    } else {
+      alert("This outfit is already in your favorites!");
+    }
+  };
+
+  const handleWear = () => {
+    alert("You're wearing this outfit today! 👗👕👖👟");
+  };
 
   return (
     <>
@@ -82,15 +98,21 @@ const OutfitDetails = () => {
         <div className="mt-8 flex gap-4 justify-center">
           <button
             className="bg-cyan-500 text-white px-6 py-3 rounded-lg hover:bg-cyan-600 transition"
-            onClick={() => alert("Wear Again clicked!")}
+            onClick={handleWear}
           >
             Wear Again
           </button>
           <button
             className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition"
-            onClick={() => alert("Save Outfit clicked!")}
+            onClick={handleSave}
           >
             Save Outfit
+          </button>
+          <button
+            className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition"
+            onClick={() => navigate("/")}
+          >
+            Back to Dashboard
           </button>
         </div>
       </div>

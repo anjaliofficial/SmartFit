@@ -1,8 +1,37 @@
-import React from "react";
+import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import Digital from "../assets/image/digital.png";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      const response = await axios.post("http://localhost:3000/login", {
+        email,
+        password,
+      });
+
+      console.log(response.data);
+      alert("Login successful! Redirecting to Dashboard...");
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex overflow-hidden">
       {/* Left Side - Image */}
@@ -23,7 +52,7 @@ const Login = () => {
           </p>
 
           {/* Form */}
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
                 Email
@@ -33,6 +62,8 @@ const Login = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 placeholder="Enter your email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -45,29 +76,37 @@ const Login = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 placeholder="Enter your password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
             <div className="flex justify-end">
-              <a href="/ForgetPassword" className="text-sm text-cyan-600 hover:underline">
+              <a
+                href="/ForgetPassword"
+                className="text-sm text-cyan-600 hover:underline"
+              >
                 Forgot your Password?
               </a>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-cyan-500 text-white py-2 rounded-lg hover:bg-cyan-600 transition-colors"
+              disabled={loading}
+              className={`w-full py-2 rounded-lg transition-colors ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-cyan-500 text-white hover:bg-cyan-600"
+              }`}
             >
-              Log In
+              {loading ? "Logging In..." : "Log In"}
             </button>
           </form>
 
           {/* Divider */}
           <div className="flex items-center my-6">
             <hr className="flex-1 border-gray-300" />
-            <span className="px-2 text-gray-500 text-sm">
-              Or continue with
-            </span>
+            <span className="px-2 text-gray-500 text-sm">Or continue with</span>
             <hr className="flex-1 border-gray-300" />
           </div>
 
@@ -82,7 +121,7 @@ const Login = () => {
           {/* Sign Up */}
           <p className="text-center text-gray-600 mt-6 text-sm">
             Do not have an account?{" "}
-            <a href="/Signup" className="text-cyan-600 hover:underline">
+            <a href="/signup" className="text-cyan-600 hover:underline">
               Sign Up
             </a>
           </p>

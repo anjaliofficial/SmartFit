@@ -1,12 +1,47 @@
-import React from "react";
+import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import DigitalImage from "../assets/image/register.png"; // replace with your image path
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post("http://localhost:3000/register", {
+        email,
+        password,
+      });
+
+      console.log(response.data);
+      alert("Signup successful! Redirecting to login...");
+      navigate("/login"); // redirect after signup
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Signup failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex overflow-hidden">
       {/* Left Side - Image */}
-      <div className="hidden md:flex w-1/2 items-center justify-center ">
+      <div className="hidden md:flex w-1/2 items-center justify-center">
         <img
           src={DigitalImage}
           alt="Digital Closet"
@@ -25,7 +60,7 @@ const Signup = () => {
           </p>
 
           {/* Form */}
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
                 Email
@@ -35,6 +70,8 @@ const Signup = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 placeholder="Enter your email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -47,6 +84,8 @@ const Signup = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 placeholder="Enter your password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
@@ -59,14 +98,21 @@ const Signup = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 placeholder="Confirm your password"
                 required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-cyan-500 text-white py-2 rounded-lg hover:bg-cyan-600 transition-colors"
+              disabled={loading}
+              className={`w-full py-2 rounded-lg transition-colors ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-cyan-500 text-white hover:bg-cyan-600"
+              }`}
             >
-              Sign Up
+              {loading ? "Signing Up..." : "Sign Up"}
             </button>
           </form>
 
@@ -90,7 +136,7 @@ const Signup = () => {
           {/* Login link */}
           <p className="text-center text-gray-600 mt-6 text-sm">
             Already have an account?{" "}
-            <a href="/LogIn" className="text-cyan-600 hover:underline">
+            <a href="/login" className="text-cyan-600 hover:underline">
               Log In
             </a>
           </p>

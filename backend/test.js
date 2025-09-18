@@ -1,7 +1,6 @@
 require("dotenv").config();
 const nodemailer = require("nodemailer");
 
-// ✅ Setup transporter
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465, // SSL port
@@ -12,7 +11,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ Send test email
 transporter.sendMail(
   {
     from: `"SmartFit Test" <${process.env.EMAIL_USER}>`,

@@ -22,6 +22,8 @@ const ForgetPassword = lazy(() => import("./public/ForgetPassword"));
 
 const SettingsPage = lazy(() => import("./public/SettingsPage"));
 
+const ResetPassword = lazy(() => import("./public/ResetPassword"));
+
 function App() {
   return (
     <Router>
@@ -45,8 +47,9 @@ function App() {
             />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/forgetpassword" element={<ForgetPassword />} />
+            <Route path="/forgot-password" element={<ForgetPassword />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
         </Suspense>
       </SavedOutfitsProvider>

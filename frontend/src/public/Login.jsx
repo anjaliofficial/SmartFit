@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
+import { Link, useNavigate } from "react-router-dom";
 import Digital from "../assets/image/digital.png";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -13,13 +13,16 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      setLoading(true);
       const response = await axios.post(
-  "http://localhost:3000/api/auth/login",
-  { email, password }
-);
+        "http://localhost:3000/api/auth/login",
+        {
+          email,
+          password,
+        }
+      );
 
       console.log(response.data);
       alert("Login successful! Redirecting to Dashboard...");
@@ -82,12 +85,12 @@ const Login = () => {
             </div>
 
             <div className="flex justify-end">
-              <a
-                href="/ForgetPassword"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-cyan-600 hover:underline"
               >
                 Forgot your Password?
-              </a>
+              </Link>
             </div>
 
             <button
@@ -121,9 +124,9 @@ const Login = () => {
           {/* Sign Up */}
           <p className="text-center text-gray-600 mt-6 text-sm">
             Do not have an account?{" "}
-            <a href="/signup" className="text-cyan-600 hover:underline">
+            <Link to="/signup" className="text-cyan-600 hover:underline">
               Sign Up
-            </a>
+            </Link>
           </p>
         </div>
       </div>

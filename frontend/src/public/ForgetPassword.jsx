@@ -1,28 +1,59 @@
-import React from "react";
+import React, { useState } from "react";
 import FPW from "../assets/image/fpw.png";
+import axios from "axios";
 
 const ForgetPassword = () => {
+  const [email, setEmail] = useState(""); // Track email input
+  const [loading, setLoading] = useState(false); // Track loading state
+  const [message, setMessage] = useState(""); // Success message
+  const [error, setError] = useState(""); // Error message
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await axios.post(
+        "http://localhost:3000/api/auth/forgot-password",
+        {
+          email,
+        }
+      );
+      setMessage(res.data.message);
+    } catch (err) {
+      setError(err.response?.data?.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-screen flex overflow-hidden">
-      {/* Left Side - Image */}
+      {/* Left Side Image */}
       <div className="hidden md:flex w-1/2 items-center justify-center">
         <img
           src={FPW}
-          alt="Digital Closet"
+          alt="Forgot Password"
           className="h-full w-auto object-contain"
         />
       </div>
 
-      {/* Right Side - Form */}
+      {/* Right Side Form */}
       <div className="flex w-full md:w-1/2 items-center justify-center px-8 py-12">
         <div className="max-w-md w-full">
-          <h2 className="text-3xl font-bold text-gray-800">Forgot Your Password?</h2>
+          <h2 className="text-3xl font-bold text-gray-800">
+            Forgot Your Password?
+          </h2>
           <p className="text-gray-500 mb-6">
-            No worries! Enter your email below and we will send you a link to reset it.
+            Enter your email and we'll send you a link to reset your password.
           </p>
 
-          {/* Form */}
-          <form className="space-y-4">
+          {message && <p className="text-green-600 mb-4">{message}</p>}
+          {error && <p className="text-red-600 mb-4">{error}</p>}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
                 Email
@@ -32,25 +63,27 @@ const ForgetPassword = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 placeholder="Enter your email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
-
             <button
               type="submit"
-              className="w-full bg-cyan-500 text-white py-2 rounded-lg hover:bg-cyan-600 transition-colors"
+              disabled={loading}
+              className={`w-full py-2 rounded-lg transition-colors ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-cyan-500 text-white hover:bg-cyan-600"
+              }`}
             >
-              Reset Your Password
+              {loading ? "Sending..." : "Reset Your Password"}
             </button>
           </form>
 
-      
-
-
-          {/* Sign Up */}
           <p className="text-center text-gray-600 mt-6 text-sm">
-            Remember Your Password? {" "}
-            <a href="/Signup" className="text-cyan-600 hover:underline">
+            Remember your password?{" "}
+            <a href="/Login" className="text-cyan-600 hover:underline">
               Log In
             </a>
           </p>

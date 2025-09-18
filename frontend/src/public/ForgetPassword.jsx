@@ -3,10 +3,10 @@ import FPW from "../assets/image/fpw.png";
 import axios from "axios";
 
 const ForgetPassword = () => {
-  const [email, setEmail] = useState(""); // Track email input
-  const [loading, setLoading] = useState(false); // Track loading state
-  const [message, setMessage] = useState(""); // Success message
-  const [error, setError] = useState(""); // Error message
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,13 +17,11 @@ const ForgetPassword = () => {
     try {
       const res = await axios.post(
         "http://localhost:3000/api/auth/forgot-password",
-        {
-          email,
-        }
+        { email }
       );
       setMessage(res.data.message);
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong");
+      setError(err.response?.data?.message || "Server Error");
     } finally {
       setLoading(false);
     }
@@ -31,7 +29,6 @@ const ForgetPassword = () => {
 
   return (
     <div className="h-screen flex overflow-hidden">
-      {/* Left Side Image */}
       <div className="hidden md:flex w-1/2 items-center justify-center">
         <img
           src={FPW}
@@ -40,7 +37,6 @@ const ForgetPassword = () => {
         />
       </div>
 
-      {/* Right Side Form */}
       <div className="flex w-full md:w-1/2 items-center justify-center px-8 py-12">
         <div className="max-w-md w-full">
           <h2 className="text-3xl font-bold text-gray-800">

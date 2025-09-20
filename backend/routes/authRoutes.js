@@ -1,5 +1,3 @@
-// routes/authRoutes.js
-
 const express = require("express");
 const router = express.Router();
 const {
@@ -7,18 +5,21 @@ const {
   loginUser,
   forgotPassword,
   resetPasswordWithToken,
-  getProfile
-
+  getProfile,
+  updateProfile
 } = require("../controllers/authController");
-const authMiddleware = require("../middleware/authMiddleware");
 
+// import default exported middleware
+const protect = require("../middleware/authMiddleware");
 
 // Routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
-router.post("/forgot-password", forgotPassword); // fixed
+router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPasswordWithToken);
-router.get("/profile", authMiddleware, getProfile);
 
+// Use `protect` middleware
+router.get("/profile", protect, getProfile);
+router.put("/update-profile", protect, updateProfile);
 
 module.exports = router;

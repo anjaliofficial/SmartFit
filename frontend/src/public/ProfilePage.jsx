@@ -1,8 +1,9 @@
 // src/pages/ProfilePage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import Header from "../components/HeaderAfterLogin";
 import Footer from "../components/footer";
-import { FaEye, FaTrash } from "react-icons/fa"; // AR/preview and delete icons
+import { FaEye, FaTrash } from "react-icons/fa";
 
 const initialOutfits = [
   {
@@ -32,13 +33,24 @@ const initialOutfits = [
 ];
 
 const ProfilePage = () => {
-  const [user] = useState({
-    name: "Anjali Bista",
-    email: "anjali@example.com",
-    stylePreferences: ["Casual", "Formal", "Party"],
-  });
-
+  const [user, setUser] = useState(null);
   const [pastOutfits, setPastOutfits] = useState(initialOutfits);
+
+  // Fetch profile from backend
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token"); // token from login
+        const res = await axios.get("http://localhost:3000/api/auth/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error("❌ Failed to fetch profile:", err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleWearAgain = (outfit) => {
     alert(`You're wearing: ${outfit.shirt}, ${outfit.pants}, ${outfit.shoes}`);
@@ -50,14 +62,15 @@ const ProfilePage = () => {
     }
   };
 
+  if (!user) {
+    return <p className="text-center mt-10">Loading profile...</p>;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <Header />
 
-      {/* Main Content */}
       <main className="flex-grow bg-gray-100 p-4 md:p-6">
-        {/* Page Title */}
         <h1 className="text-3xl font-bold mb-6 text-center md:text-left">
           Profile
         </h1>
@@ -66,26 +79,11 @@ const ProfilePage = () => {
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-3">User Information</h2>
           <p>
-            <strong>Name:</strong> {user.name}
+            <strong>Name:</strong> {user.name || "N/A"}
           </p>
           <p>
             <strong>Email:</strong> {user.email}
           </p>
-        </div>
-
-        {/* Style Preferences */}
-        <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-3">Style Preferences</h2>
-          <div className="flex gap-3 flex-wrap">
-            {user.stylePreferences.map((style, index) => (
-              <span
-                key={index}
-                className="bg-blue-200 text-blue-800 px-4 py-1 rounded-full text-sm font-medium"
-              >
-                {style}
-              </span>
-            ))}
-          </div>
         </div>
 
         {/* Past Outfit History */}
@@ -105,7 +103,6 @@ const ProfilePage = () => {
                     alt={`Outfit ${outfit.id}`}
                     className="w-full h-48 object-cover"
                   />
-                  {/* Overlay icons */}
                   <div className="absolute top-2 right-2 flex gap-2">
                     <button
                       onClick={() => handleWearAgain(outfit)}
@@ -122,7 +119,6 @@ const ProfilePage = () => {
                       <FaTrash />
                     </button>
                   </div>
-
                   <div className="p-4">
                     <p className="font-semibold">{outfit.shirt}</p>
                     <p>{outfit.pants}</p>
@@ -136,7 +132,6 @@ const ProfilePage = () => {
         </div>
       </main>
 
-      {/* Footer */}
       <Footer />
     </div>
   );

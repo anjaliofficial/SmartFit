@@ -19,26 +19,32 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { savedOutfits } = useContext(SavedOutfitsContext);
   const [user, setUser] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Fetch profile
+  // ------------------- Fetch profile -------------------
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) return;
+        if (!token) {
+          setLoadingProfile(false);
+          return;
+        }
 
-        const res = await axios.get("http://localhost:5000/api/auth/profile", {
+        const res = await axios.get("http://localhost:3000/api/auth/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);
       } catch (err) {
         console.error("Failed to fetch profile:", err);
+      } finally {
+        setLoadingProfile(false);
       }
     };
     fetchProfile();
   }, []);
 
-  // Fallback favorites
+  // ------------------- Favorites fallback -------------------
   const favorites =
     savedOutfits.length > 0
       ? savedOutfits
@@ -49,10 +55,12 @@ const Dashboard = () => {
           { id: 4, img: fav4, name: "Winter Layers" },
         ];
 
+  // ------------------- AI Outfit Suggestions -------------------
   const [suggestions, setSuggestions] = useState([]);
 
   useEffect(() => {
-    if (!localStorage.getItem("aiOutfits")) {
+    const storedAI = localStorage.getItem("aiOutfits");
+    if (!storedAI) {
       const aiMock = [
         {
           id: 101,
@@ -75,7 +83,7 @@ const Dashboard = () => {
       localStorage.setItem("aiOutfits", JSON.stringify(aiMock));
       setSuggestions(aiMock);
     } else {
-      setSuggestions(JSON.parse(localStorage.getItem("aiOutfits")));
+      setSuggestions(JSON.parse(storedAI));
     }
   }, []);
 
@@ -86,12 +94,18 @@ const Dashboard = () => {
       <div className="font-sans text-gray-800 bg-gray-50 min-h-screen p-4 md:p-8">
         {/* Welcome Section */}
         <section className="bg-cyan-100 p-6 rounded-xl shadow-md mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            👋 Welcome back, {user ? user.name || user.email : "User"}!
-          </h1>
-          <p className="text-gray-700 text-lg">
-            Upload your clothing items and see smart outfit suggestions.
-          </p>
+          {loadingProfile ? (
+            <h1 className="text-3xl font-bold">Loading profile...</h1>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold mb-2">
+                👋 Welcome back, {user ? user.name || user.email : "User"}!
+              </h1>
+              <p className="text-gray-700 text-lg">
+                Upload your clothing items and see smart outfit suggestions.
+              </p>
+            </>
+          )}
         </section>
 
         {/* Upload Page Button */}

@@ -1,8 +1,9 @@
+// src/pages/Login.jsx
 import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { Link, useNavigate } from "react-router-dom";
-import Digital from "../assets/image/digital.png";
 import axios from "axios";
+import Digital from "../assets/image/digital.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -18,18 +19,32 @@ const Login = () => {
     try {
       const response = await axios.post(
         "http://localhost:3000/api/auth/login",
-        {
-          email,
-          password,
-        }
+        { email, password }
       );
 
-      console.log(response.data);
-      alert("Login successful! Redirecting to Dashboard...");
+      const { token, user } = response.data;
+
+      // Save token & user info
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("userName", user.name || "");
+
+      alert(`Welcome back, ${user.name || "User"}! Redirecting...`);
       navigate("/dashboard");
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Login failed. Please try again.");
+      console.error("Login error:", err);
+
+      // Better error handling
+      if (err.response) {
+        // Backend responded with error
+        alert(err.response.data.message || "Login failed. Check credentials.");
+      } else if (err.request) {
+        // No response from server
+        alert("Server not responding. Make sure backend is running.");
+      } else {
+        // Other errors
+        alert("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -54,7 +69,6 @@ const Login = () => {
             Login to manage your digital closet
           </p>
 
-          {/* Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -106,14 +120,12 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center my-6">
             <hr className="flex-1 border-gray-300" />
             <span className="px-2 text-gray-500 text-sm">Or continue with</span>
             <hr className="flex-1 border-gray-300" />
           </div>
 
-          {/* Google Sign-in */}
           <button className="w-full flex items-center justify-center border border-gray-300 py-2 rounded-lg hover:bg-gray-50 transition-colors">
             <FcGoogle className="text-2xl mr-2" />
             <span className="text-gray-700 font-medium">
@@ -121,7 +133,6 @@ const Login = () => {
             </span>
           </button>
 
-          {/* Sign Up */}
           <p className="text-center text-gray-600 mt-6 text-sm">
             Do not have an account?{" "}
             <Link to="/signup" className="text-cyan-600 hover:underline">

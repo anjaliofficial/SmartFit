@@ -13,12 +13,32 @@ import { FaTshirt, FaBoxOpen, FaStar } from "react-icons/fa";
 import { MdCheckroom } from "react-icons/md";
 
 import { SavedOutfitsContext } from "../context/SavedOutfitsContext";
+import axios from "axios";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { savedOutfits } = useContext(SavedOutfitsContext);
+  const [user, setUser] = useState(null);
 
-  // Fallback favorites if savedOutfits is empty
+  // Fetch profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await axios.get("http://localhost:5000/api/auth/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  // Fallback favorites
   const favorites =
     savedOutfits.length > 0
       ? savedOutfits
@@ -29,10 +49,8 @@ const Dashboard = () => {
           { id: 4, img: fav4, name: "Winter Layers" },
         ];
 
-  // Optional: recent AI outfit suggestions (mocked for now)
   const [suggestions, setSuggestions] = useState([]);
 
-  // Mock some AI suggestions for demonstration
   useEffect(() => {
     if (!localStorage.getItem("aiOutfits")) {
       const aiMock = [
@@ -68,7 +86,9 @@ const Dashboard = () => {
       <div className="font-sans text-gray-800 bg-gray-50 min-h-screen p-4 md:p-8">
         {/* Welcome Section */}
         <section className="bg-cyan-100 p-6 rounded-xl shadow-md mb-8">
-          <h1 className="text-3xl font-bold mb-2">👋 Welcome back, Anjali!</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            👋 Welcome back, {user ? user.name || user.email : "User"}!
+          </h1>
           <p className="text-gray-700 text-lg">
             Upload your clothing items and see smart outfit suggestions.
           </p>

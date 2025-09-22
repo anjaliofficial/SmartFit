@@ -29,7 +29,7 @@ const Signup = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        "http://localhost:3000/api/auth/register",
+        "http://localhost:5000/api/auth/register",
         { name, email, password } // <-- send name to backend
       );
       console.log(response.data);

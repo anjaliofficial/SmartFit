@@ -1,40 +1,59 @@
 // server.js
+import express from "express";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./config/db");
-const authRoutes = require("./routes/authRoutes");
-require("dotenv").config(); // Load .env variables
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import outfitRoutes from "./routes/outfitRoutes.js";
+
+dotenv.config();
 
 const app = express();
 
-// ✅ Debug: Check if .env variables are loaded
+// Fix __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Debug environment variables
 console.log("EMAIL_USER:", process.env.EMAIL_USER);
 console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded ✅" : "Missing ❌");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Loaded ✅" : "Missing ❌");
 
 // Connect to MongoDB
-connectDB(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected ✅"))
-  .catch((err) => {
-    console.error("MongoDB connection error ❌:", err);
-    process.exit(1);
-  });
+try {
+  await connectDB(process.env.MONGO_URI);
+  console.log("MongoDB connected ✅");
+} catch (err) {
+  console.error("MongoDB connection error ❌:", err);
+  process.exit(1);
+}
 
-// Middleware
-app.use(cors());
+// Middleware: CORS
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
+
+// Parse JSON requests
 app.use(express.json());
+
+// Serve uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/outfits", outfitRoutes);
 
 // Test route
 app.get("/", (req, res) => {
   res.send("SmartFit Backend is running ✅");
 });
 
-// Auth routes
-app.use("/api/auth", authRoutes);
-
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} ✅`);
 });

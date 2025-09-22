@@ -25,7 +25,7 @@ const Settings = () => {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        const res = await axios.get("http://localhost:3000/api/auth/profile", {
+        const res = await axios.get("http://localhost:5000/api/auth/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -45,7 +45,7 @@ const Settings = () => {
       setLoading(true);
       const token = localStorage.getItem("token");
       const res = await axios.put(
-        "http://localhost:3000/api/auth/update-profile",
+        "http://localhost:5000/api/auth/update-profile",
         { name: username, darkMode, notifications },
         { headers: { Authorization: `Bearer ${token}` } }
       );

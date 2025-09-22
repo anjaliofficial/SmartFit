@@ -1,34 +1,70 @@
 // controllers/outfitController.js
-import path from "path";
 import fs from "fs";
-import fetch, { FormData } from "node-fetch";
+import path from "path";
+import fetch, { FormData, fileFrom } from "node-fetch";
 
-// Utility to remove background via Remove.bg API
+// ------------------- Remove Background Function -------------------
 async function removeBackground(inputPath, outputPath, apiKey) {
-  if (!fs.existsSync(inputPath)) throw new Error("Input file does not exist");
+  const absInput = path.resolve(inputPath);
+  const absOutput = path.resolve(outputPath);
 
-  const form = new FormData();
-  form.append("image_file", fs.createReadStream(inputPath));
-  form.append("size", "auto");
+  console.log("removeBackground called:", { absInput, absOutput });
 
-  const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-    method: "POST",
-    headers: {
-      "X-Api-Key": apiKey,
-    },
-    body: form,
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Remove.bg API error: ${res.status} - ${text}`);
+  if (!apiKey) {
+    throw new Error("Remove.bg API key missing. Set REMOVEBG_API_KEY in .env");
   }
 
-  const buffer = await res.arrayBuffer();
-  fs.writeFileSync(outputPath, Buffer.from(buffer));
+  if (!fs.existsSync(absInput)) {
+    throw new Error(`Input file not found: ${absInput}`);
+  }
+
+  try {
+    const form = new FormData();
+    const file = await fileFrom(absInput); // ensures correct metadata
+    form.append("image_file", file, path.basename(absInput));
+    form.append("size", "auto");
+
+    console.log("Sending request to remove.bg...");
+    const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+      method: "POST",
+      headers: {
+        "X-Api-Key": apiKey,
+      },
+      body: form,
+    });
+
+    console.log("Remove.bg response status:", response.status, response.statusText);
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Remove.bg error body:", text);
+      throw new Error(`Remove.bg API error: ${response.status} - ${text}`);
+    }
+
+    if (contentType.includes("application/json")) {
+      const json = await response.json();
+      console.error("Remove.bg returned JSON (unexpected):", json);
+      throw new Error(
+        "Remove.bg returned JSON instead of an image: " + JSON.stringify(json)
+      );
+    }
+
+    // Save processed image
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    fs.writeFileSync(absOutput, buffer);
+    console.log("Saved processed image:", absOutput, "size:", buffer.length);
+
+    return absOutput;
+  } catch (err) {
+    console.error("removeBackground failed:", err);
+    throw err;
+  }
 }
 
-// Upload outfit controller
+// ------------------- Upload Outfit Controller -------------------
 export const uploadOutfit = async (req, res) => {
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
@@ -39,6 +75,7 @@ export const uploadOutfit = async (req, res) => {
     const processedDir = path.join("uploads", "processed");
     if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir, { recursive: true });
 
+    // Loop through uploaded files
     for (const key of Object.keys(req.files)) {
       const file = req.files[key][0];
       const inputPath = file.path;

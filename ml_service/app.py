@@ -9,7 +9,7 @@ from flask_cors import CORS
 from sklearn.cluster import KMeans
 from werkzeug.utils import secure_filename
 import mediapipe as mp
-import traceback # <-- Added this import
+import traceback # <-- Added thiscom import
 
 # ------------------- Environment Fix -------------------
 os.environ["OPENBLAS_NUM_THREADS"] = "12"

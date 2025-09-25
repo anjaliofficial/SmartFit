@@ -1,20 +1,10 @@
-import express from "express";
-import multer from "../utils/multerConfig.js";
-import { uploadOutfit } from "../controllers/outfitController.js";
+// This file simply imports outfitController and exports it for server.js
+const express = require("express");
+const outfitController = require("../controllers/outfitController");
 
 const router = express.Router();
 
-router.post(
-  "/upload",
-  multer.fields([
-    { name: "shirt", maxCount: 1 },
-    { name: "pants", maxCount: 1 },
-    { name: "shoes", maxCount: 1 },
-    { name: "jacket", maxCount: 1 },
-    { name: "accessories", maxCount: 1 },
-    { name: "bag", maxCount: 1 },
-  ]),
-  uploadOutfit
-);
+// Mount all routes from outfitController
+router.use("/", outfitController);
 
-export default router; // ✅ default export
+module.exports = router;

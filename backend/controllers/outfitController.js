@@ -1,107 +1,63 @@
-// controllers/outfitController.js
-import fs from "fs";
-import path from "path";
-import fetch, { FormData, fileFrom } from "node-fetch";
+const express = require("express");
+const axios = require("axios");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const FormData = require("form-data");
 
-// ------------------- Remove Background Function -------------------
-async function removeBackground(inputPath, outputPath, apiKey) {
-  const absInput = path.resolve(inputPath);
-  const absOutput = path.resolve(outputPath);
+const router = express.Router();
 
-  console.log("removeBackground called:", { absInput, absOutput });
+// Multer setup for temporary upload folder
+const upload = multer({ dest: "uploads/" });
 
-  if (!apiKey) {
-    throw new Error("Remove.bg API key missing. Set REMOVEBG_API_KEY in .env");
-  }
-
-  if (!fs.existsSync(absInput)) {
-    throw new Error(`Input file not found: ${absInput}`);
-  }
-
-  try {
-    const form = new FormData();
-    const file = await fileFrom(absInput); // ensures correct metadata
-    form.append("image_file", file, path.basename(absInput));
-    form.append("size", "auto");
-
-    console.log("Sending request to remove.bg...");
-    const response = await fetch("https://api.remove.bg/v1.0/removebg", {
-      method: "POST",
-      headers: {
-        "X-Api-Key": apiKey,
-      },
-      body: form,
-    });
-
-    console.log("Remove.bg response status:", response.status, response.statusText);
-
-    const contentType = response.headers.get("content-type") || "";
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Remove.bg error body:", text);
-      throw new Error(`Remove.bg API error: ${response.status} - ${text}`);
-    }
-
-    if (contentType.includes("application/json")) {
-      const json = await response.json();
-      console.error("Remove.bg returned JSON (unexpected):", json);
-      throw new Error(
-        "Remove.bg returned JSON instead of an image: " + JSON.stringify(json)
-      );
-    }
-
-    // Save processed image
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    fs.writeFileSync(absOutput, buffer);
-    console.log("Saved processed image:", absOutput, "size:", buffer.length);
-
-    return absOutput;
-  } catch (err) {
-    console.error("removeBackground failed:", err);
-    throw err;
-  }
-}
-
-// ------------------- Upload Outfit Controller -------------------
-export const uploadOutfit = async (req, res) => {
-  try {
-    if (!req.files || Object.keys(req.files).length === 0) {
-      return res.status(400).json({ success: false, message: "No files uploaded" });
-    }
-
-    const result = {};
-    const processedDir = path.join("uploads", "processed");
-    if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir, { recursive: true });
-
-    // Loop through uploaded files
-    for (const key of Object.keys(req.files)) {
-      const file = req.files[key][0];
-      const inputPath = file.path;
-      const outputFileName = `${Date.now()}_${file.originalname}`;
-      const outputPath = path.join(processedDir, outputFileName);
-
-      console.log(`${key} input path:`, inputPath);
-      console.log(`${key} output path:`, outputPath);
-
-      try {
-        await removeBackground(inputPath, outputPath, process.env.REMOVEBG_API_KEY);
-        console.log(`${key} background removed successfully`);
-        result[key] = `/uploads/processed/${outputFileName}`;
-      } catch (bgErr) {
-        console.error(`${key} Remove.bg failed:`, bgErr);
-        return res.status(500).json({
-          success: false,
-          message: `Background removal failed for ${key}`,
-          error: bgErr.toString(),
-        });
-      }
-    }
-
-    return res.json({ success: true, data: result });
-  } catch (err) {
-    console.error("Upload outfit error:", err);
-    return res.status(500).json({ success: false, message: "Server error", error: err.toString() });
-  }
+// Placeholder background removal (currently just copies the file)
+const removeBackground = async (inputPath, outputPath) => {
+  fs.copyFileSync(inputPath, outputPath);
 };
+
+// ---------- Multi-File Upload Endpoint ----------
+router.post("/upload", upload.any(), async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ success: false, message: "No files uploaded" });
+  }
+
+  const results = {};
+
+  // Process each uploaded file
+  for (const file of req.files) {
+    const type = file.fieldname; // shirt, pants, shoes, etc.
+    const outputPath = path.join("processed", file.originalname);
+    fs.mkdirSync("processed", { recursive: true });
+
+    try {
+      await removeBackground(file.path, outputPath);
+
+      // Send file to Flask ML service
+      const formData = new FormData();
+      formData.append("file", fs.createReadStream(outputPath));
+
+      const response = await axios.post("http://127.0.0.1:5000/analyze", formData, {
+        headers: formData.getHeaders(),
+      });
+
+      // Collect result for this item
+      results[type] = {
+        filename: response.data.filename,
+        dominant_colors: response.data.dominant_colors,
+        pattern: response.data.pattern,
+        style: response.data.style,
+        warnings: response.data.warnings,
+      };
+    } catch (err) {
+      console.error(err);
+      results[type] = {
+        filename: null,
+        warnings: ["Upload or analysis failed"],
+      };
+    }
+  }
+
+  res.json({ success: true, data: results });
+});
+
+module.exports = router;

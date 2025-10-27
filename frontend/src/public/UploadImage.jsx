@@ -23,6 +23,8 @@ export default function UploadPage() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  const BACKEND_URL = "http://127.0.0.1:5001"; // <-- Make sure this matches your Flask port
+
   // Start camera
   const startCamera = async () => {
     try {
@@ -68,24 +70,27 @@ export default function UploadPage() {
     if (!facePhoto) return alert("Capture a photo first");
     const form = new FormData();
     form.append("file_face", facePhoto);
+
     try {
-      const res = await fetch("http://127.0.0.1:5000/detect_skin", {
+      const res = await fetch(`${BACKEND_URL}/detect_skin`, {
         method: "POST",
         body: form,
       });
+
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Skin detection failed");
+        const text = await res.text();
+        throw new Error(`Server error: ${text}`);
       }
+
       const data = await res.json();
       setSkinTone(data.skin_tone);
     } catch (err) {
       console.error(err);
-      alert(`Failed to detect skin tone: ${err.message}`);
+      alert("Failed to detect skin tone. Check backend server and URL.");
     }
   };
 
-  // Handle clothing file upload with max limit
+  // Handle clothing file upload
   const handleFileChange = (category, files) => {
     const selectedFiles = Array.from(files);
     if (clothes[category].length + selectedFiles.length > maxPerCategory) {
@@ -140,25 +145,22 @@ export default function UploadPage() {
     });
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/analyze", {
+      const res = await fetch(`${BACKEND_URL}/analyze`, {
         method: "POST",
         body: form,
       });
 
       if (!res.ok) {
-        // Parse the error message from the backend
-        const errorData = await res.json();
-        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+        const text = await res.text();
+        throw new Error(`Server error: ${text}`);
       }
 
       const data = await res.json();
       setRecommendations(data);
-      if (data.skin_tone) {
-        setSkinTone(data.skin_tone);
-      }
+      if (data.skin_tone) setSkinTone(data.skin_tone);
     } catch (err) {
       console.error("Failed to analyze:", err);
-      alert(`Failed to analyze: ${err.message}`);
+      alert("Failed to analyze outfit. Check backend server and URL.");
     }
   };
 
@@ -208,7 +210,6 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
-
       <main className="flex-1 p-6 max-w-5xl mx-auto">
         {/* Camera Section */}
         <section className="mb-6 bg-white p-6 rounded-lg shadow-lg">
@@ -258,26 +259,20 @@ export default function UploadPage() {
         {/* Occasion Selection */}
         <section className="mb-6 bg-white p-6 rounded-lg shadow-lg">
           <h2 className="font-bold text-xl mb-3">Step 2 — Select Occasion</h2>
-          <div className="mb-4">
-            <label htmlFor="occasion-select" className="block font-medium mb-1">
-              Where will you wear this?
-            </label>
-            <select
-              id="occasion-select"
-              value={occasion}
-              onChange={(e) => setOccasion(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:ring focus:ring-indigo-200"
-            >
-              {occasionOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={occasion}
+            onChange={(e) => setOccasion(e.target.value)}
+            className="w-full p-2 border rounded-lg focus:ring focus:ring-indigo-200"
+          >
+            {occasionOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         </section>
 
-        {/* Clothing Upload Section */}
+        {/* Clothing Upload */}
         <section className="mb-6 bg-white p-6 rounded-lg shadow-lg">
           <h2 className="font-bold text-xl mb-3">
             Step 3 — Upload clothing items
@@ -295,67 +290,73 @@ export default function UploadPage() {
           </button>
         </div>
 
-        {/* Recommendations Section */}
-        <section className="mb-6">
-          {recommendations.combined_preview && (
-            <div className="mb-6 bg-white p-4 rounded-lg shadow-lg">
-              <h3 className="font-bold text-lg mb-2">Top outfit preview</h3>
-              <img
-                src={`http://127.0.0.1:5000/uploads/${recommendations.combined_preview}`}
-                alt="combined"
-                className="w-full max-w-3xl h-auto rounded-lg shadow-md"
-              />
-            </div>
-          )}
-
-          {recommendations.recommended_colors && (
-            <div className="mb-6 bg-white p-4 rounded-lg shadow-lg">
-              <h3 className="font-bold text-lg mb-2">Recommended colors</h3>
-              <div className="flex gap-3 mt-2 flex-wrap">
-                {recommendations.recommended_colors.map((c, i) => (
-                  <div
-                    key={i}
-                    className="w-24 h-24 rounded-lg border flex items-center justify-center text-sm font-bold text-white shadow-md"
-                    style={{ backgroundColor: c.toLowerCase() }}
-                  >
-                    {c}
-                  </div>
-                ))}
+        {/* Recommendations */}
+        {recommendations && (
+          <section className="mb-6 space-y-6">
+            {recommendations.combined_preview && (
+              <div className="bg-white p-4 rounded-lg shadow-lg">
+                <h3 className="font-bold text-lg mb-2">Top outfit preview</h3>
+                <img
+                  src={`${BACKEND_URL}/uploads/${recommendations.combined_preview}`}
+                  alt="combined"
+                  className="w-full max-w-3xl h-auto rounded-lg shadow-md"
+                />
               </div>
-            </div>
-          )}
+            )}
 
-          {recommendations.recommended_accessories && (
-            <div className="mb-6 bg-white p-4 rounded-lg shadow-lg">
-              <h3 className="font-bold text-lg mb-2">Accessory suggestions</h3>
-              <ul className="list-disc pl-5 mt-2">
-                {recommendations.recommended_accessories.map((acc, i) => (
-                  <li key={i}>{acc}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {recommendations.recommended_outfits && (
-            <div className="mb-6 bg-white p-4 rounded-lg shadow-lg">
-              <h3 className="font-bold text-lg mb-2">Recommended outfits</h3>
-              <div className="mt-2 space-y-3">
-                {recommendations.recommended_outfits.map((o, i) => (
-                  <div key={i} className="p-3 bg-gray-50 rounded-lg shadow-md">
-                    <p>
-                      <strong>Score:</strong> {o.score} — {o.feedback}
-                    </p>
-                    <p>
-                      <strong>Items:</strong> {o.items.join(", ")}
-                    </p>
-                  </div>
-                ))}
+            {recommendations.recommended_colors && (
+              <div className="bg-white p-4 rounded-lg shadow-lg">
+                <h3 className="font-bold text-lg mb-2">Recommended colors</h3>
+                <div className="flex gap-3 mt-2 flex-wrap">
+                  {recommendations.recommended_colors.map((c, i) => (
+                    <div
+                      key={i}
+                      className="w-24 h-24 rounded-lg border flex items-center justify-center text-sm font-bold text-white shadow-md"
+                      style={{ backgroundColor: c.toLowerCase() }}
+                    >
+                      {c}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+
+            {recommendations.recommended_accessories && (
+              <div className="bg-white p-4 rounded-lg shadow-lg">
+                <h3 className="font-bold text-lg mb-2">
+                  Accessory suggestions
+                </h3>
+                <ul className="list-disc pl-5 mt-2">
+                  {recommendations.recommended_accessories.map((acc, i) => (
+                    <li key={i}>{acc}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {recommendations.recommended_outfits && (
+              <div className="bg-white p-4 rounded-lg shadow-lg">
+                <h3 className="font-bold text-lg mb-2">Recommended outfits</h3>
+                <div className="mt-2 space-y-3">
+                  {recommendations.recommended_outfits.map((o, i) => (
+                    <div
+                      key={i}
+                      className="p-3 bg-gray-50 rounded-lg shadow-md"
+                    >
+                      <p>
+                        <strong>Score:</strong> {o.score} — {o.feedback}
+                      </p>
+                      <p>
+                        <strong>Items:</strong> {o.items.join(", ")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
       </main>
-
       <Footer />
     </div>
   );

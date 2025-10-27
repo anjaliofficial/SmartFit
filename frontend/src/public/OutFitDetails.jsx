@@ -2,7 +2,7 @@
 import React, { useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/HeaderAfterLogin";
-import Footer from "../components/footer";
+import Footer from "../components/Footer";
 import { SavedOutfitsContext } from "../context/SavedOutfitsContext";
 
 // Example static favorites
@@ -39,81 +39,91 @@ const OutfitDetails = () => {
   const navigate = useNavigate();
   const { savedOutfits, saveOutfit } = useContext(SavedOutfitsContext);
 
-  // Fetch outfit from context savedOutfits or fallback favorites
   const outfit =
     savedOutfits.find((f) => f.id.toString() === id) ||
     favoriteOutfits.find((f) => f.id === id);
 
   if (!outfit) {
     return (
-      <div className="p-6">
-        <p className="text-gray-700">No outfit found.</p>
+      <div className="min-h-screen flex flex-col justify-center items-center text-center bg-gray-50 p-6">
+        <h2 className="text-xl text-gray-600 mb-4">No outfit found 🕵️‍♀️</h2>
         <button
-          className="bg-cyan-500 text-white px-4 py-2 rounded mt-4"
+          className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-5 py-3 rounded-lg shadow hover:opacity-90 transition"
           onClick={() => navigate("/")}
         >
-          Back to Dashboard
+          ⬅️ Back to Dashboard
         </button>
       </div>
     );
   }
 
   const handleSave = () => {
-    // Prevent duplicate saves
     if (!savedOutfits.some((o) => o.id === outfit.id)) {
       saveOutfit(outfit);
-      alert("Outfit saved to favorites!");
+      alert("✅ Outfit saved to favorites!");
     } else {
-      alert("This outfit is already in your favorites!");
+      alert("⚠️ This outfit is already in your favorites!");
     }
   };
 
   const handleWear = () => {
-    alert("You're wearing this outfit today! 👗👕👖👟");
+    alert("👗 You’re wearing this outfit today!");
   };
 
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50 p-6 md:p-12">
-        <h1 className="text-3xl font-bold mb-6">{outfit.name}</h1>
+      <div className="min-h-screen bg-gray-50 py-10 px-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
+              {outfit.name}
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Handpicked style just for you ✨
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {outfit.items.map((item, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded-xl shadow p-4 flex flex-col items-center"
+          {/* Outfit Items */}
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12">
+            {outfit.items.map((item, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl shadow-md hover:shadow-lg transition p-4 flex flex-col items-center"
+              >
+                <img
+                  src={item.img}
+                  alt={item.type}
+                  className="w-full h-64 object-contain rounded-xl mb-4"
+                />
+                <p className="text-gray-800 font-semibold">{item.type}</p>
+                <p className="text-gray-500 text-sm">{item.color}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap justify-center gap-6">
+            <button
+              onClick={handleWear}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-8 py-3 rounded-xl font-semibold shadow hover:scale-105 transition"
             >
-              <img
-                src={item.img}
-                alt={item.type}
-                className="w-full h-64 object-contain mb-4"
-              />
-              <p className="text-gray-700 font-semibold">{item.type}</p>
-              <p className="text-gray-500">{item.color}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 flex gap-4 justify-center">
-          <button
-            className="bg-cyan-500 text-white px-6 py-3 rounded-lg hover:bg-cyan-600 transition"
-            onClick={handleWear}
-          >
-            Wear Again
-          </button>
-          <button
-            className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition"
-            onClick={handleSave}
-          >
-            Save Outfit
-          </button>
-          <button
-            className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition"
-            onClick={() => navigate("/")}
-          >
-            Back to Dashboard
-          </button>
+              👕 Wear Again
+            </button>
+            <button
+              onClick={handleSave}
+              className="bg-white border border-gray-300 text-gray-700 px-8 py-3 rounded-xl font-semibold shadow-sm hover:bg-gray-100 transition"
+            >
+              💖 Save Outfit
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-3 rounded-xl font-semibold shadow hover:scale-105 transition"
+            >
+              ⬅️ Back to Dashboard
+            </button>
+          </div>
         </div>
       </div>
       <Footer />

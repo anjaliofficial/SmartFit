@@ -7,6 +7,7 @@ import {
   FaBell,
   FaStar,
   FaTachometerAlt,
+  FaTshirt, // ✅ new icon for My Closet
 } from "react-icons/fa";
 import logo from "../assets/image/logo.png";
 
@@ -29,7 +30,7 @@ const Header = () => {
           <img src={logo} alt="Smart Fit Logo" className="h-12 w-12" />
         </div>
 
-        {/* Menu (always visible) */}
+        {/* Menu */}
         <div className="hidden md:flex items-center space-x-8">
           <button
             onClick={() => navigate("/dashboard")}
@@ -43,6 +44,15 @@ const Header = () => {
           >
             <FaStar /> Saved Outfits
           </button>
+
+          {/* ✅ My Closet button */}
+          <button
+            onClick={() => navigate("/mycloset")}
+            className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"
+          >
+            <FaTshirt /> My Closet
+          </button>
+
           <button
             onClick={() => navigate("/profilepage")}
             className="flex items-center gap-2 text-gray-700 hover:text-cyan-600"

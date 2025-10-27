@@ -2,7 +2,7 @@
 import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/HeaderAfterLogin";
-import Footer from "../components/footer";
+import Footer from "../components/Footer";
 
 import fav1 from "../assets/image/fav1.jpg";
 import fav2 from "../assets/image/fav2.jpg";
@@ -87,6 +87,9 @@ const Dashboard = () => {
     }
   }, []);
 
+  // ------------------- Closet Stats -------------------
+  const closetItems = JSON.parse(localStorage.getItem("closetItems")) || [];
+
   return (
     <>
       <Header />
@@ -108,15 +111,34 @@ const Dashboard = () => {
           )}
         </section>
 
-        {/* Upload Page Button */}
+        {/* Navigation Buttons */}
         <section className="bg-white rounded-xl shadow p-6 mb-10 text-center">
-          <h2 className="text-2xl font-bold mb-4">Add New Clothing Items</h2>
-          <button
-            className="bg-cyan-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-cyan-600 transition"
-            onClick={() => navigate("/uploadimage")}
-          >
-            Go to Upload Page
-          </button>
+          <div className="flex gap-4 flex-wrap justify-center">
+            <button
+              className="bg-cyan-500 text-white px-6 py-3 rounded-lg hover:bg-cyan-600 transition"
+              onClick={() => navigate("/uploadimage")}
+            >
+              Add New Clothing Items
+            </button>
+            <button
+              className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition"
+              onClick={() => navigate("/mycloset")}
+            >
+              My Closet
+            </button>
+            <button
+              className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition"
+              onClick={() => navigate("/outfit-suggestion")}
+            >
+              Outfit Suggestions
+            </button>
+            <button
+              className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition"
+              onClick={() => navigate("/wearing-now")}
+            >
+              Wearing Now
+            </button>
+          </div>
         </section>
 
         {/* Smart Outfit Suggestions */}
@@ -150,7 +172,7 @@ const Dashboard = () => {
                       className="bg-cyan-500 text-white px-4 py-2 rounded hover:bg-cyan-600"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/outfit/${combo.id}`);
+                        alert("Saved to Favorites!");
                       }}
                     >
                       Save
@@ -159,6 +181,10 @@ const Dashboard = () => {
                       className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                       onClick={(e) => {
                         e.stopPropagation();
+                        localStorage.setItem(
+                          "wearingNow",
+                          JSON.stringify(combo.items)
+                        );
                         alert("Wearing this outfit today!");
                       }}
                     >
@@ -175,13 +201,13 @@ const Dashboard = () => {
         <section className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
             <FaTshirt className="text-cyan-500 text-4xl mb-2" />
-            <h2 className="text-2xl font-bold">120</h2>
+            <h2 className="text-2xl font-bold">{suggestions.length}</h2>
             <p className="text-gray-600">Outfits Added</p>
           </div>
 
           <div className="p-6 bg-white rounded-xl shadow flex flex-col items-center hover:scale-105 transform transition">
             <FaBoxOpen className="text-cyan-500 text-4xl mb-2" />
-            <h2 className="text-2xl font-bold">350</h2>
+            <h2 className="text-2xl font-bold">{closetItems.length}</h2>
             <p className="text-gray-600">Closet Items</p>
           </div>
 
@@ -191,7 +217,7 @@ const Dashboard = () => {
           >
             <FaStar className="text-cyan-500 text-4xl mb-2" />
             <h2 className="text-2xl font-bold">
-              {savedOutfits.length > 0 ? savedOutfits.length : 45}
+              {savedOutfits.length > 0 ? savedOutfits.length : 0}
             </h2>
             <p className="text-gray-600">Favorites Saved</p>
           </div>

@@ -10,7 +10,6 @@ const ML_SERVICE_URL = "http://127.0.0.1:5001";
  * @desc Helper function to delete temporary files uploaded by multer
  */
 const cleanupTempFiles = (files) => {
-    // 🔑 Correction: Ensure files is an array before iterating
     if (files && Array.isArray(files)) { 
         files.forEach((file) => {
             if (file && file.path && fs.existsSync(file.path)) {
@@ -23,6 +22,22 @@ const cleanupTempFiles = (files) => {
 };
 
 /**
+ * @desc Helper to resolve the image path to be relative to the server's root 'uploads' folder
+ */
+const getRelativeImagePath = (fullPath) => {
+    if (!fullPath) return "";
+    // Find the 'uploads' directory in the path string
+    const uploadsIndex = fullPath.indexOf('uploads' + path.sep);
+    if (uploadsIndex !== -1) {
+        // Return 'uploads/filename.jpg'
+        return fullPath.substring(uploadsIndex).replace(/\\/g, '/');
+    }
+    // Fallback if path is already relative (e.g., from combined_preview or simple filename)
+    return fullPath.replace(/\\/g, '/');
+};
+
+
+/**
  * @desc Upload clothing item(s), analyze via ML service, save metadata
  * @route POST /api/outfits/upload
  */
@@ -30,14 +45,13 @@ export const uploadOutfit = async (req, res) => {
     const cleanup = () => cleanupTempFiles(req.files);
 
     try {
-        const uploadedFiles = req.files; 
+        const uploadedFiles = req.files;
 
         if (!uploadedFiles || uploadedFiles.length === 0) {
             return res.status(400).json({ success: false, message: "No files uploaded" });
         }
 
         const formData = new FormData();
-        
         uploadedFiles.forEach((file) => {
             formData.append('files', fs.createReadStream(file.path), { filename: file.originalname });
         });
@@ -45,14 +59,15 @@ export const uploadOutfit = async (req, res) => {
         formData.append("occasion", req.body.occasion || "Casual"); 
         formData.append("season", req.body.season || "all");
         formData.append("name", req.body.name || "Unnamed Item");
+        formData.append("category", req.body.category || "Others"); 
 
-        // Send to Flask ML microservice for analysis
+        // Send files to ML service for analysis
         const mlResponse = await axios.post(`${ML_SERVICE_URL}/analyze`, formData, {
             headers: formData.getHeaders(),
             timeout: 120000,
         });
 
-        cleanup(); 
+        cleanup();
 
         const data = mlResponse.data;
 
@@ -64,28 +79,49 @@ export const uploadOutfit = async (req, res) => {
             });
         }
 
-        // --- Save analyzed outfits to MongoDB ---
+        // Flatten clothing items from categories
+        let mlItems = [];
+        if (data.clothing_items && typeof data.clothing_items === "object" && !Array.isArray(data.clothing_items)) {
+            mlItems = Object.values(data.clothing_items).flat();
+        } else if (Array.isArray(data.clothing_items)) {
+            mlItems = data.clothing_items;
+        }
+
         const outfitsToSave = [];
         const userId = req.user?.id || "670b8dfe7c7f123abc000001"; 
 
-        uploadedFiles.forEach((file, index) => {
-            const analysisItem = data.clothing_items[index]; 
+        const combinedPreviewUrl = data.combined_preview ? getRelativeImagePath(data.combined_preview) : null;
 
-            if(analysisItem) {
-                outfitsToSave.push({
-                    user: userId,
-                    name: req.body.name || path.basename(file.originalname, path.extname(file.originalname)),
-                    category: req.body.category || analysisItem.category || "Others", 
-                    color: req.body.color || analysisItem.dominant_color_name || "unknown",
-                    season: req.body.season || "all",
-                    occasion: req.body.occasion || "casual",
-                    // The path saved by Multer on the Node server (e.g., uploads/filename.jpg)
-                    imageUrl: file.path.replace(/\\/g, '/'), 
-                    style: analysisItem.style || "casual",
-                    pattern: analysisItem.pattern || "plain",
-                    dominantColors: analysisItem.dominant_colors || [],
+        uploadedFiles.forEach((file, index) => {
+            let analysisItem = mlItems[index];
+
+            // Fallback: match by filename substring
+            if (!analysisItem && mlItems.length > 0) {
+                const origName = (file.originalname || "").toLowerCase();
+                analysisItem = mlItems.find(mi => {
+                    const fname = (mi.filename || mi.name || "").toLowerCase();
+                    return fname && origName && fname.includes(origName);
                 });
             }
+
+            const chosenAnalysis = analysisItem || {};
+            
+            // FIX: Use getRelativeImagePath to store the correct 'uploads/filename.jpg' path
+            const imagePathToSave = combinedPreviewUrl || getRelativeImagePath(file.path);
+
+            outfitsToSave.push({
+                user: userId,
+                name: req.body.name || path.basename(file.originalname, path.extname(file.originalname)),
+                category: req.body.category || chosenAnalysis.category || "Others",
+                color: req.body.color || chosenAnalysis.dominant_color_name || "unknown",
+                season: req.body.season || "all",
+                occasion: req.body.occasion || "casual",
+                // Store path relative to the root 'uploads' directory
+                imageUrl: imagePathToSave, 
+                style: chosenAnalysis.style || "casual",
+                pattern: chosenAnalysis.pattern || "plain",
+                dominantColors: chosenAnalysis.dominant_colors || [],
+            });
         });
 
         if (outfitsToSave.length > 0) {
@@ -94,13 +130,14 @@ export const uploadOutfit = async (req, res) => {
                 success: true,
                 message: "Outfits uploaded & analyzed successfully",
                 outfits: savedOutfits,
+                combined_preview: combinedPreviewUrl 
             });
         }
-        
+
         return res.status(200).json({ success: true, message: "Files analyzed, but no items saved." });
 
     } catch (err) {
-        cleanup(); 
+        cleanup();
         console.error("❌ Upload error:", err);
 
         let errorMessage = err.message;
@@ -109,7 +146,7 @@ export const uploadOutfit = async (req, res) => {
         } else if (axios.isAxiosError(err)) {
             errorMessage = `ML Service Connection Error: ${err.code}`;
         }
-        
+
         return res.status(500).json({
             success: false,
             message: "Error processing upload or connecting to ML service",
@@ -126,8 +163,8 @@ export const getAllOutfits = async (req, res) => {
     try {
         const userId = req.user?.id || "670b8dfe7c7f123abc000001"; 
         const outfits = await Outfit.find({ user: userId }).sort({ createdAt: -1 });
-        // 🔑 Ensure the response structure matches what the frontend expects
-        return res.status(200).json({ success: true, outfits }); 
+        
+        return res.status(200).json({ success: true, outfits: outfits }); 
     } catch (err) {
         return res.status(500).json({
             success: false,
@@ -199,11 +236,12 @@ export const deleteOutfit = async (req, res) => {
             return res.status(401).json({ success: false, message: "Not authorized to delete this outfit" });
         }
 
-        // Delete local image file
+        // Delete local image file if exists
         const imagePath = outfit.imageUrl;
+        // The image path stored in DB is 'uploads/filename.jpg'
         if (imagePath && imagePath.startsWith("uploads/")) {
-            // path.resolve creates the full path from the project root
-            const imageFullPath = path.resolve(imagePath); 
+            // We need to resolve the path relative to the current working directory (backend folder)
+            const imageFullPath = path.resolve(path.join(process.cwd(), imagePath)); 
             
             if (fs.existsSync(imageFullPath)) {
                 fs.unlink(imageFullPath, (err) => {
@@ -212,7 +250,6 @@ export const deleteOutfit = async (req, res) => {
             }
         }
 
-        // Delete from DB
         await Outfit.findByIdAndDelete(outfitId);
 
         return res.status(200).json({ success: true, message: "Outfit deleted successfully" });

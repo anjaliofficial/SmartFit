@@ -1,29 +1,28 @@
 import multer from "multer";
-import fs from "fs";
 import path from "path";
-
-// Ensure upload directory exists
-const uploadDir = "uploads/";
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+import fs from "fs";
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
+  destination: (req, file, cb) => {
+    // FIX: Ensure this path is relative to the current working directory, 
+    // which should be the root of your backend project.
+    const uploadPath = path.join(process.cwd(), "uploads"); 
+    
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}_${file.originalname}`;
+    cb(null, uniqueName);
+  }
 });
 
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/")) cb(null, true);
-  else cb(new Error("Invalid file type"), false);
-};
-
-// 🔑 This exports the 'upload' middleware 
 export const upload = multer({ 
-    storage, 
-    fileFilter, 
-    limits: { 
-        fileSize: 20 * 1024 * 1024 // 20 MB limit
-    } 
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowed = /png|jpg|jpeg/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.test(ext));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });

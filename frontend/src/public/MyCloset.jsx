@@ -3,15 +3,15 @@ import axios from "axios";
 import Header from "../components/HeaderAfterLogin";
 import Footer from "../components/Footer";
 
-// ✅ CRITICAL FIX: Set API_URL to the full backend server address (assuming port 5000)
+// ✅ The fallback image is expected to be at the root of the public folder
+const placeholderImg = "/placeholder.png";
 const API_URL = "http://localhost:5000/api/outfits";
 
 const MyCloset = () => {
-  // State for data returned from the server (MongoDB items)
   const [closetItems, setClosetItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  // State for form metadata inputs
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -20,12 +20,8 @@ const MyCloset = () => {
     occasion: "",
   });
 
-  // State to hold the actual File objects (required for Multer upload on the server)
   const [selectedFiles, setSelectedFiles] = useState([]);
-
-  // State to hold Base64 for local preview *only*
   const [imagePreviews, setImagePreviews] = useState([]);
-
   const [editingIndex, setEditingIndex] = useState(null);
   const [search, setSearch] = useState("");
 
@@ -44,7 +40,7 @@ const MyCloset = () => {
   const seasons = ["Summer", "Winter", "Spring", "Autumn"];
   const occasions = ["Casual", "Formal", "Party", "Outdoor", "Work", "Other"];
 
-  // --- Helper: Convert files to Base64 (for PREVIEW only) ---
+  // Convert uploaded files to Base64 for preview
   const convertToBase64 = (files) =>
     Promise.all(
       Array.from(files).map(
@@ -58,17 +54,12 @@ const MyCloset = () => {
       )
     );
 
-  // --- Handlers ---
   const handleChange = async (e) => {
     const { name, value, files } = e.target;
-
     if (name === "images" && files && files.length > 0) {
       const selected = Array.from(files).slice(0, 5);
-
-      // 1. Store the actual File objects for server submission
       setSelectedFiles(selected);
 
-      // 2. Generate Base64 for immediate visual preview
       const base64Images = await convertToBase64(selected);
       setImagePreviews(base64Images);
     } else {
@@ -76,43 +67,40 @@ const MyCloset = () => {
     }
   };
 
-  // --- API Fetch Function ---
+  // ✅ Fetch closet items
   const fetchClosetItems = useCallback(async () => {
     try {
       setLoading(true);
-      // GET http://localhost:5000/api/outfits
-      const response = await axios.get(API_URL, {
-        withCredentials: true, // ✅ IMPORTANT: Ensures cookies/auth headers are sent
-      });
-      // Ensure the server returns { success: true, outfits: [...] }
+      const response = await axios.get(API_URL, { withCredentials: true });
       const outfits = response.data.outfits || [];
-
-      // ✅ FIX: Filter out any undefined or invalid items
       const validOutfits = outfits.filter(
-        (item) => item && typeof item === "object" && item.name !== undefined
+        (item) => item && typeof item === "object" && item.name
       );
-
       setClosetItems(validOutfits);
     } catch (error) {
       console.error("Error fetching closet items:", error);
-      setClosetItems([]); // Set to empty array on failure to prevent filter error
+      alert(
+        "Failed to load closet items. Please ensure the backend is running."
+      );
+      setClosetItems([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // --- Initial Fetch Hook ---
   useEffect(() => {
     fetchClosetItems();
   }, [fetchClosetItems]);
 
+  // ✅ Add or Update item
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setUploadProgress(0);
     const isNewItem = editingIndex === null;
 
     if (!formData.name || !formData.category) {
-      alert("Please fill name and category!");
+      alert("Please fill in name and category!");
       setLoading(false);
       return;
     }
@@ -125,48 +113,42 @@ const MyCloset = () => {
 
     try {
       if (isNewItem) {
-        // --- ADD NEW ITEM (POST with files) ---
         const data = new FormData();
-        data.append("name", formData.name);
-        data.append("category", formData.category);
-        data.append("color", formData.color);
-        data.append("season", formData.season);
-        data.append("occasion", formData.occasion);
+        Object.entries(formData).forEach(([key, val]) => data.append(key, val));
+        selectedFiles.forEach((file) => data.append("item_images", file));
 
-        // Append actual File objects using the backend's expected field name: 'item_images'
-        selectedFiles.forEach((file) => {
-          data.append("item_images", file);
-        });
-
-        // POST http://localhost:5000/api/outfits/upload
         const response = await axios.post(`${API_URL}/upload`, data, {
           headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true, // ✅ IMPORTANT: Ensures cookies/auth headers are sent
+          withCredentials: true,
+          onUploadProgress: (e) =>
+            setUploadProgress(Math.round((e.loaded * 100) / e.total)),
         });
 
-        // ✅ FIX: Use functional update to ensure we have latest state
-        setClosetItems((prevItems) => [response.data.outfit, ...prevItems]);
+        if (response.data.success) {
+          const newOutfit = response.data.outfits[0] || response.data.outfit;
+          if (newOutfit) {
+            setClosetItems((prev) => [newOutfit, ...prev]);
+            alert("Item added successfully!");
+          } else {
+            throw new Error("Item added but no data received");
+          }
+        } else throw new Error(response.data.message || "Failed to add item");
       } else {
-        // --- EDIT EXISTING ITEM (PUT, metadata only) ---
         const itemToUpdate = closetItems[editingIndex];
-
-        // PUT http://localhost:5000/api/outfits/:id
         const response = await axios.put(
           `${API_URL}/${itemToUpdate._id}`,
           formData,
-          { withCredentials: true } // ✅ IMPORTANT: Ensures cookies/auth headers are sent
+          { withCredentials: true }
         );
-
-        // ✅ FIX: Use functional update
-        setClosetItems((prevItems) => {
-          const updated = [...prevItems];
+        setClosetItems((prev) => {
+          const updated = [...prev];
           updated[editingIndex] = response.data.outfit;
           return updated;
         });
         setEditingIndex(null);
+        alert("Item updated successfully!");
       }
 
-      // Reset form states
       setFormData({
         name: "",
         category: "",
@@ -176,27 +158,22 @@ const MyCloset = () => {
       });
       setSelectedFiles([]);
       setImagePreviews([]);
-      setEditingIndex(null);
+      setUploadProgress(0);
     } catch (error) {
       console.error("Error submitting item:", error);
       alert(
-        `Failed to save item. Error: ${
-          error.response?.data?.message || error.message
-        }`
+        `Failed to save item. ${error.response?.data?.message || error.message}`
       );
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   };
 
+  // ✅ Edit existing item
   const handleEdit = (index) => {
     const item = closetItems[index];
-    // ✅ FIX: Add safety check for item existence
-    if (!item) {
-      console.error("Item not found at index:", index);
-      return;
-    }
-
+    if (!item) return;
     setFormData({
       name: item.name || "",
       category: item.category || "",
@@ -204,116 +181,105 @@ const MyCloset = () => {
       season: item.season || "",
       occasion: item.occasion || "",
     });
-    // Clear files/preview on edit since we are only updating metadata
     setSelectedFiles([]);
     setImagePreviews([]);
     setEditingIndex(index);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ✅ Delete item
   const handleDelete = async (index) => {
-    if (window.confirm("Are you sure you want to delete this item?")) {
-      setLoading(true);
-      const itemToDelete = closetItems[index];
-
-      // ✅ FIX: Add safety check for item existence
-      if (!itemToDelete) {
-        console.error("Item not found at index:", index);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // DELETE http://localhost:5000/api/outfits/:id
-        await axios.delete(`${API_URL}/${itemToDelete._id}`, {
-          withCredentials: true, // ✅ IMPORTANT: Ensures cookies/auth headers are sent
-        });
-        // ✅ FIX: Use functional update
-        setClosetItems((prevItems) => prevItems.filter((_, i) => i !== index));
-      } catch (error) {
-        console.error("Error deleting item:", error);
-        alert("Failed to delete item.");
-      } finally {
-        setLoading(false);
-      }
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    setLoading(true);
+    const itemToDelete = closetItems[index];
+    try {
+      await axios.delete(`${API_URL}/${itemToDelete._id}`, {
+        withCredentials: true,
+      });
+      setClosetItems((prev) => prev.filter((_, i) => i !== index));
+      alert("Item deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      alert("Failed to delete item.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ FIX: Safe filtering with proper null checks
+  // ✅ Filter and search
   const filteredItems = closetItems.filter((item) => {
-    // Skip undefined or invalid items
     if (!item || typeof item !== "object") return false;
-
-    const itemName = item.name || "";
-    const itemCategory = item.category || "";
-    const itemColor = item.color || "";
-
-    const searchTerm = search.toLowerCase();
-
+    const s = search.toLowerCase();
     return (
-      itemName.toLowerCase().includes(searchTerm) ||
-      itemCategory.toLowerCase().includes(searchTerm) ||
-      itemColor.toLowerCase().includes(searchTerm)
+      item.name?.toLowerCase().includes(s) ||
+      item.category?.toLowerCase().includes(s) ||
+      item.color?.toLowerCase().includes(s)
     );
   });
 
-  // ✅ FIX: Safe item rendering function
+  // ✅ Proper image URL resolver (FIXED)
+  const getImageUrl = (item) => {
+    if (!item.imageUrl) return placeholderImg;
+
+    // 1. External URLs are returned directly
+    if (item.imageUrl.startsWith("http")) return item.imageUrl;
+
+    // 2. Paths stored as 'uploads/filename.jpg' (from backend fix)
+    if (item.imageUrl.startsWith("uploads/"))
+      return `http://localhost:5000/${item.imageUrl}`;
+
+    // 3. Absolute path /uploads/filename.jpg (unlikely but safe to include)
+    if (item.imageUrl.startsWith("/uploads/"))
+      return `http://localhost:5000${item.imageUrl}`;
+
+    // 4. Default fallback (if only filename is stored)
+    return `http://localhost:5000/uploads/${item.imageUrl}`;
+  };
+
   const renderItem = (item, index) => {
-    // Double-check item validity before rendering
-    if (!item || !item._id) {
-      console.warn("Invalid item found at index:", index, item);
-      return null;
-    }
-
-    const itemName = item.name || "Unnamed Item";
-    const itemCategory = item.category || "Uncategorized";
-    const itemColor = item.color || "—";
-    const itemSeason = item.season || "";
-    const itemOccasion = item.occasion || "";
-    const itemImageUrl = item.imageUrl || "";
-
+    if (!item || !item._id) return null;
+    const imageUrl = getImageUrl(item);
     return (
       <div
         key={item._id}
         className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group"
       >
-        {/* ✅ FIX: Proper image URL handling with fallback */}
         <img
-          src={
-            itemImageUrl.startsWith("http")
-              ? itemImageUrl
-              : `http://localhost:5000/${itemImageUrl}`
-          }
-          alt={itemName}
+          src={imageUrl}
+          alt={item.name || "Unnamed Item"}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+          // FIX: The onError handler is what causes the flicker if the placeholder fails.
+          // Ensure it's correctly referencing the public asset.
           onError={(e) => {
-            e.target.src =
-              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzljYTBiMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBBdmFpbGFibGU8L3RleHQ+PC9zdmc+";
-            e.target.alt = "Image not available";
+            if (e.target.src !== placeholderImg) {
+              e.target.src = placeholderImg;
+            }
           }}
         />
         <div className="p-4">
-          <h3 className="font-medium text-gray-800">{itemName}</h3>
+          <h3 className="font-medium text-gray-800">
+            {item.name || "Unnamed"}
+          </h3>
           <p className="text-sm text-gray-500">
-            {itemCategory} • {itemColor}
+            {item.category || "Uncategorized"} • {item.color || "—"}
           </p>
-          {(itemSeason || itemOccasion) && (
+          {(item.season || item.occasion) && (
             <p className="text-xs text-gray-400 mt-1">
-              {[itemSeason, itemOccasion].filter(Boolean).join(" • ")}
+              {[item.season, item.occasion].filter(Boolean).join(" • ")}
             </p>
           )}
           <div className="flex justify-between mt-3">
             <button
               onClick={() => handleEdit(index)}
               disabled={loading}
-              className="text-blue-600 hover:text-blue-800 text-sm disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="text-blue-600 hover:text-blue-800 text-sm disabled:text-gray-400"
             >
               Edit
             </button>
             <button
               onClick={() => handleDelete(index)}
               disabled={loading}
-              className="text-red-600 hover:text-red-800 text-sm disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="text-red-600 hover:text-red-800 text-sm disabled:text-gray-400"
             >
               Delete
             </button>
@@ -332,21 +298,19 @@ const MyCloset = () => {
             👗 My Closet
           </h1>
 
-          {/* Form Section */}
+          {/* Add/Edit Form */}
           <div className="bg-white rounded-2xl shadow-md p-6 mb-12">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2">
-              {editingIndex !== null
-                ? "✏️ Edit Item Metadata"
-                : "➕ Add New Item"}
+              {editingIndex !== null ? "✏️ Edit Item" : "➕ Add New Item"}
             </h2>
 
             <form
               onSubmit={handleSubmit}
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5"
             >
-              {/* Form Fields: Name, Category, Color, Season, Occasion */}
+              {/* Inputs */}
               <div>
-                <label className="block text-gray-600 mb-2">Item Name</label>
+                <label className="block text-gray-600 mb-2">Item Name *</label>
                 <input
                   type="text"
                   name="name"
@@ -357,8 +321,9 @@ const MyCloset = () => {
                   required
                 />
               </div>
+
               <div>
-                <label className="block text-gray-600 mb-2">Category</label>
+                <label className="block text-gray-600 mb-2">Category *</label>
                 <select
                   name="category"
                   value={formData.category}
@@ -367,13 +332,14 @@ const MyCloset = () => {
                   required
                 >
                   <option value="">Select Category</option>
-                  {categories.map((cat, i) => (
-                    <option key={i} value={cat}>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="block text-gray-600 mb-2">Color</label>
                 <input
@@ -385,6 +351,7 @@ const MyCloset = () => {
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
+
               <div>
                 <label className="block text-gray-600 mb-2">Season</label>
                 <select
@@ -394,13 +361,14 @@ const MyCloset = () => {
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
                 >
                   <option value="">Optional</option>
-                  {seasons.map((s, i) => (
-                    <option key={i} value={s}>
+                  {seasons.map((s) => (
+                    <option key={s} value={s}>
                       {s}
                     </option>
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="block text-gray-600 mb-2">Occasion</label>
                 <select
@@ -410,18 +378,17 @@ const MyCloset = () => {
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
                 >
                   <option value="">Optional</option>
-                  {occasions.map((o, i) => (
-                    <option key={i} value={o}>
+                  {occasions.map((o) => (
+                    <option key={o} value={o}>
                       {o}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Image Upload */}
               <div className="col-span-1 md:col-span-3">
                 <label className="block text-gray-600 mb-2">
-                  Upload Images (Max 5)
+                  Upload Images (Max 5) {editingIndex === null && "*"}
                 </label>
                 <input
                   type="file"
@@ -430,7 +397,7 @@ const MyCloset = () => {
                   multiple
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg p-2"
-                  disabled={editingIndex !== null} // Disable file upload on edit
+                  disabled={editingIndex !== null}
                 />
                 {editingIndex !== null && (
                   <p className="text-sm text-red-500 mt-1">
@@ -440,17 +407,33 @@ const MyCloset = () => {
                 )}
               </div>
 
-              {/* Preview Images */}
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="col-span-3">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-cyan-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Uploading: {uploadProgress}%
+                  </p>
+                </div>
+              )}
+
               {imagePreviews.length > 0 && (
-                <div className="col-span-3 flex flex-wrap justify-center gap-3 mt-4">
-                  {imagePreviews.map((img, i) => (
-                    <img
-                      key={i}
-                      src={img}
-                      alt={`preview-${i}`}
-                      className="w-28 h-28 object-cover rounded-xl border-2 border-cyan-400"
-                    />
-                  ))}
+                <div className="col-span-3">
+                  <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                  <div className="flex flex-wrap gap-3">
+                    {imagePreviews.map((img, i) => (
+                      <img
+                        key={i}
+                        src={img}
+                        alt={`preview-${i}`}
+                        className="w-28 h-28 object-cover rounded-xl border-2 border-cyan-400"
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -458,33 +441,33 @@ const MyCloset = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
                 >
                   {loading
                     ? "Saving..."
                     : editingIndex !== null
-                    ? "Update Metadata"
+                    ? "Update Item"
                     : "Add Item"}
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Closet Items */}
+          {/* ✅ Closet Grid */}
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-xl font-semibold text-gray-700">
               👚 Your Closet ({closetItems.length} items)
             </h2>
             <input
               type="text"
-              placeholder="Search item..."
+              placeholder="Search by name, category, color..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border border-gray-300 rounded-lg p-2 w-56 focus:ring-2 focus:ring-cyan-500"
+              className="border border-gray-300 rounded-lg p-2 w-64 focus:ring-2 focus:ring-cyan-500"
             />
           </div>
 
-          {loading ? (
+          {loading && !uploadProgress ? (
             <div className="text-center py-10">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
               <p className="text-gray-500 mt-2">Loading your closet items...</p>

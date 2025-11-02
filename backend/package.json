@@ -10,7 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+<<<<<<< HEAD
     "axios": "^1.12.2",
+=======
+>>>>>>> 03b2b20dc939ec7eba88440d1c9053b1cb50c7e7
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
@@ -25,8 +28,16 @@
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.6",
+<<<<<<< HEAD
     "nodemon": "^3.1.10",
     "sharp": "^0.34.4"
   },
   "description": ""
+=======
+    "nodemon": "^3.1.10"
+  },
+  "description": ""
+
+  
+>>>>>>> 03b2b20dc939ec7eba88440d1c9053b1cb50c7e7
 }

@@ -20,4 +20,4 @@ router.put("/:id", updateOutfit);
 // Delete outfit by ID
 router.delete("/:id", deleteOutfit);
 
-export default router;
+export default router;import express from "express";

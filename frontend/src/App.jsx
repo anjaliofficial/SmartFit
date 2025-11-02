@@ -12,6 +12,9 @@ const SaveOutfits = lazy(() => import("./public/SaveOutfits"));
 const ProfilePage = lazy(() => import("./public/ProfilePage"));
 const OutfitAnalysisPage = lazy(() => import("./public/OutfitAnalysisPage"));
 const UploadImage = lazy(() => import("./public/UploadImage"));
+const OutfitRecommendationPage = lazy(() =>
+  import("./public/OutfitRecommendations")
+);
 
 const Login = lazy(() => import("./public/Login"));
 const Signup = lazy(() => import("./public/Signup"));
@@ -20,9 +23,6 @@ const ForgetPassword = lazy(() => import("./public/ForgetPassword"));
 const SettingsPage = lazy(() => import("./public/SettingsPage"));
 
 const ResetPassword = lazy(() => import("./public/ResetPassword"));
-const MyCloset = lazy(() => import("./public/MyCloset"));
-const OutfitSuggestion = lazy(() => import("./public/OutfitSuggestions"));
-const WearingNow = lazy(() => import("./public/WearingNow"));
 
 function App() {
   return (
@@ -30,6 +30,7 @@ function App() {
       <SavedOutfitsProvider>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>
+            <Route path="/login" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<LandingPage />} />
             <Route path="/landingpage" element={<LandingPage />} />
@@ -50,6 +51,15 @@ function App() {
             <Route path="/mycloset" element={<MyCloset />} />
             <Route path="/outfit-suggestion" element={<OutfitSuggestion />} />
             <Route path="/wearing-now" element={<WearingNow />} />
+            <Route
+              path="/outfitrecommendations"
+              element={<OutfitRecommendationPage />}
+            />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgetPassword />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
         </Suspense>
       </SavedOutfitsProvider>

@@ -115,12 +115,6 @@ const Dashboard = () => {
         <section className="bg-white rounded-xl shadow p-6 mb-10 text-center">
           <div className="flex gap-4 flex-wrap justify-center">
             <button
-              className="bg-cyan-500 text-white px-6 py-3 rounded-lg hover:bg-cyan-600 transition"
-              onClick={() => navigate("/uploadimage")}
-            >
-              Add New Clothing Items
-            </button>
-            <button
               className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition"
               onClick={() => navigate("/mycloset")}
             >

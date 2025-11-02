@@ -1,28 +1,21 @@
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import multer from 'multer';
+import path from 'path';
 
+// Define the storage configuration
 const storage = multer.diskStorage({
+  // CRITICAL: Files are saved permanently to the 'uploads/' folder
   destination: (req, file, cb) => {
-    // FIX: Ensure this path is relative to the current working directory, 
-    // which should be the root of your backend project.
-    const uploadPath = path.join(process.cwd(), "uploads"); 
-    
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
+    cb(null, 'uploads/'); 
   },
+  // CRITICAL: Creates a unique filename (timestamp + field name + extension)
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}_${file.originalname}`;
-    cb(null, uniqueName);
+    const ext = path.extname(file.originalname);
+    // This 'filename' value is what we save to the database
+    cb(null, Date.now() + '-' + file.fieldname + ext); 
   }
 });
 
-export const upload = multer({ 
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowed = /png|jpg|jpeg/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, allowed.test(ext));
-  },
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
-});
+// ✅ FIX: Using 'export const' creates a named export
+export const upload = multer({ storage: storage });
+
+// The file is ready to be imported using: import { upload } from "..."

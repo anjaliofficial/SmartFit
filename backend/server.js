@@ -33,7 +33,7 @@ try {
 // ------------------------------
 const app = express();
 
-// Ensure uploads folder exists
+// Ensure uploads folder exists in the backend root
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -45,7 +45,7 @@ if (!fs.existsSync(uploadDir)) {
 // ------------------------------
 app.use(
   cors({
-    origin: "http://localhost:5173", // your frontend URL
+    origin: "http://localhost:5173", // Your frontend URL
     credentials: true,
   })
 );
@@ -53,7 +53,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-// ✅ Serve static uploaded files
+// 🚨 CRITICAL FIX: Serve static files from the 'uploads' directory
 app.use("/uploads", express.static(uploadDir));
 
 // ------------------------------
@@ -70,7 +70,7 @@ app.get("/", (req, res) => {
 });
 
 // ------------------------------
-// ✅ 404 Handler
+// ✅ 404 Handler and Global Error Handler (Good Practice)
 // ------------------------------
 app.use((req, res) => {
   res.status(404).json({
@@ -79,9 +79,6 @@ app.use((req, res) => {
   });
 });
 
-// ------------------------------
-// ✅ Global Error Handler
-// ------------------------------
 app.use((err, req, res, next) => {
   console.error("❌ Global Error:", err);
   res.status(500).json({

@@ -1,17 +1,30 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import Header from "../components/HeaderAfterLogin";
 import Footer from "../components/Footer";
 
-// ✅ The fallback image is expected to be at the root of the public folder
 const placeholderImg = "/placeholder.png";
 const API_URL = "http://localhost:5000/api/outfits";
 
+// ----------------------------------------------------
+// ImageRenderer Component
+// ----------------------------------------------------
+const ImageRenderer = ({ imageUrl, altText, className }) => (
+  <img
+    src={imageUrl}
+    alt={altText}
+    className={className}
+    onError={(e) => (e.target.src = placeholderImg)}
+  />
+);
+
+// ----------------------------------------------------
 const MyCloset = () => {
   const [closetItems, setClosetItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-
+  const [appMessage, setAppMessage] = useState({ text: null, type: null });
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -19,7 +32,6 @@ const MyCloset = () => {
     season: "",
     occasion: "",
   });
-
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -40,7 +52,31 @@ const MyCloset = () => {
   const seasons = ["Summer", "Winter", "Spring", "Autumn"];
   const occasions = ["Casual", "Formal", "Party", "Outdoor", "Work", "Other"];
 
-  // Convert uploaded files to Base64 for preview
+  // Helper to display messages
+  const displayMessage = useCallback((text, type = "success") => {
+    setAppMessage({ text, type });
+    const timeout = setTimeout(
+      () => setAppMessage({ text: null, type: null }),
+      5000
+    );
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setFormData({
+      name: "",
+      category: "",
+      color: "",
+      season: "",
+      occasion: "",
+    });
+    setSelectedFiles([]);
+    setImagePreviews([]);
+    setUploadProgress(0);
+    displayMessage("Edit cancelled.", "info");
+  };
+
   const convertToBase64 = (files) =>
     Promise.all(
       Array.from(files).map(
@@ -59,7 +95,6 @@ const MyCloset = () => {
     if (name === "images" && files && files.length > 0) {
       const selected = Array.from(files).slice(0, 5);
       setSelectedFiles(selected);
-
       const base64Images = await convertToBase64(selected);
       setImagePreviews(base64Images);
     } else {
@@ -67,7 +102,7 @@ const MyCloset = () => {
     }
   };
 
-  // ✅ Fetch closet items
+  // Fetch closet items
   const fetchClosetItems = useCallback(async () => {
     try {
       setLoading(true);
@@ -79,20 +114,18 @@ const MyCloset = () => {
       setClosetItems(validOutfits);
     } catch (error) {
       console.error("Error fetching closet items:", error);
-      alert(
-        "Failed to load closet items. Please ensure the backend is running."
-      );
+      displayMessage("Failed to load closet items. Check backend.", "error");
       setClosetItems([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [displayMessage]);
 
   useEffect(() => {
     fetchClosetItems();
   }, [fetchClosetItems]);
 
-  // ✅ Add or Update item
+  // Add or Update item
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -100,13 +133,16 @@ const MyCloset = () => {
     const isNewItem = editingIndex === null;
 
     if (!formData.name || !formData.category) {
-      alert("Please fill in name and category!");
+      displayMessage("Please fill in item name and category!", "error");
       setLoading(false);
       return;
     }
 
     if (isNewItem && selectedFiles.length === 0) {
-      alert("Please upload at least one image for a new item!");
+      displayMessage(
+        "Please upload at least one image for a new item!",
+        "error"
+      );
       setLoading(false);
       return;
     }
@@ -125,13 +161,9 @@ const MyCloset = () => {
         });
 
         if (response.data.success) {
-          const newOutfit = response.data.outfits[0] || response.data.outfit;
-          if (newOutfit) {
-            setClosetItems((prev) => [newOutfit, ...prev]);
-            alert("Item added successfully!");
-          } else {
-            throw new Error("Item added but no data received");
-          }
+          const newOutfits = response.data.outfits || [];
+          setClosetItems((prev) => [...newOutfits, ...prev]);
+          displayMessage("Item(s) added successfully!", "success");
         } else throw new Error(response.data.message || "Failed to add item");
       } else {
         const itemToUpdate = closetItems[editingIndex];
@@ -146,7 +178,7 @@ const MyCloset = () => {
           return updated;
         });
         setEditingIndex(null);
-        alert("Item updated successfully!");
+        displayMessage("Item updated successfully!", "success");
       }
 
       setFormData({
@@ -161,8 +193,11 @@ const MyCloset = () => {
       setUploadProgress(0);
     } catch (error) {
       console.error("Error submitting item:", error);
-      alert(
-        `Failed to save item. ${error.response?.data?.message || error.message}`
+      displayMessage(
+        `Failed to save item. ${
+          error.response?.data?.message || error.message
+        }`,
+        "error"
       );
     } finally {
       setLoading(false);
@@ -170,7 +205,6 @@ const MyCloset = () => {
     }
   };
 
-  // ✅ Edit existing item
   const handleEdit = (index) => {
     const item = closetItems[index];
     if (!item) return;
@@ -187,7 +221,6 @@ const MyCloset = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ✅ Delete item
   const handleDelete = async (index) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
     setLoading(true);
@@ -197,16 +230,16 @@ const MyCloset = () => {
         withCredentials: true,
       });
       setClosetItems((prev) => prev.filter((_, i) => i !== index));
-      alert("Item deleted successfully!");
+      displayMessage("Item deleted successfully!", "success");
     } catch (error) {
       console.error("Error deleting item:", error);
-      alert("Failed to delete item.");
+      displayMessage("Failed to delete item.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Filter and search
+  // Filter items
   const filteredItems = closetItems.filter((item) => {
     if (!item || typeof item !== "object") return false;
     const s = search.toLowerCase();
@@ -217,44 +250,24 @@ const MyCloset = () => {
     );
   });
 
-  // ✅ Proper image URL resolver (FIXED)
+  // Resolve image URL
   const getImageUrl = (item) => {
     if (!item.imageUrl) return placeholderImg;
-
-    // 1. External URLs are returned directly
-    if (item.imageUrl.startsWith("http")) return item.imageUrl;
-
-    // 2. Paths stored as 'uploads/filename.jpg' (from backend fix)
-    if (item.imageUrl.startsWith("uploads/"))
-      return `http://localhost:5000/${item.imageUrl}`;
-
-    // 3. Absolute path /uploads/filename.jpg (unlikely but safe to include)
-    if (item.imageUrl.startsWith("/uploads/"))
-      return `http://localhost:5000${item.imageUrl}`;
-
-    // 4. Default fallback (if only filename is stored)
-    return `http://localhost:5000/uploads/${item.imageUrl}`;
+    const filename = item.imageUrl.split("/").pop();
+    return `http://localhost:5000/uploads/${filename}`;
   };
 
   const renderItem = (item, index) => {
     if (!item || !item._id) return null;
-    const imageUrl = getImageUrl(item);
     return (
       <div
         key={item._id}
         className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group"
       >
-        <img
-          src={imageUrl}
-          alt={item.name || "Unnamed Item"}
+        <ImageRenderer
+          imageUrl={getImageUrl(item)}
+          altText={item.name || "Unnamed Item"}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-          // FIX: The onError handler is what causes the flicker if the placeholder fails.
-          // Ensure it's correctly referencing the public asset.
-          onError={(e) => {
-            if (e.target.src !== placeholderImg) {
-              e.target.src = placeholderImg;
-            }
-          }}
         />
         <div className="p-4">
           <h3 className="font-medium text-gray-800">
@@ -289,26 +302,62 @@ const MyCloset = () => {
     );
   };
 
+  const getMessageClasses = () => {
+    if (!appMessage.text) return "hidden";
+    const base =
+      "p-3 rounded-lg text-white font-medium mb-6 text-center transition-all duration-300";
+    let typeClass =
+      appMessage.type === "error"
+        ? "bg-red-600"
+        : appMessage.type === "info"
+        ? "bg-blue-600"
+        : "bg-green-600";
+    return `${base} ${typeClass}`;
+  };
+
   return (
     <>
       <Header />
       <div className="min-h-screen bg-gray-50 py-10 px-6">
         <div className="max-w-6xl mx-auto">
+          <div className="flex justify-start mb-6">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-cyan-600 transition"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              Back to Dashboard
+            </Link>
+          </div>
+
           <h1 className="text-3xl font-semibold text-center mb-10">
             👗 My Closet
           </h1>
+          <div className={getMessageClasses()}>{appMessage.text}</div>
 
           {/* Add/Edit Form */}
           <div className="bg-white rounded-2xl shadow-md p-6 mb-12">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2">
               {editingIndex !== null ? "✏️ Edit Item" : "➕ Add New Item"}
             </h2>
-
             <form
               onSubmit={handleSubmit}
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5"
             >
-              {/* Inputs */}
+              {/* Form Inputs */}
               <div>
                 <label className="block text-gray-600 mb-2">Item Name *</label>
                 <input
@@ -321,7 +370,6 @@ const MyCloset = () => {
                   required
                 />
               </div>
-
               <div>
                 <label className="block text-gray-600 mb-2">Category *</label>
                 <select
@@ -339,7 +387,6 @@ const MyCloset = () => {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-gray-600 mb-2">Color</label>
                 <input
@@ -351,7 +398,6 @@ const MyCloset = () => {
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-
               <div>
                 <label className="block text-gray-600 mb-2">Season</label>
                 <select
@@ -368,7 +414,6 @@ const MyCloset = () => {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-gray-600 mb-2">Occasion</label>
                 <select
@@ -385,7 +430,6 @@ const MyCloset = () => {
                   ))}
                 </select>
               </div>
-
               <div className="col-span-1 md:col-span-3">
                 <label className="block text-gray-600 mb-2">
                   Upload Images (Max 5) {editingIndex === null && "*"}
@@ -437,7 +481,17 @@ const MyCloset = () => {
                 </div>
               )}
 
-              <div className="col-span-3 flex justify-center">
+              <div className="col-span-3 flex justify-center space-x-4">
+                {editingIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={loading}
+                    className="mt-4 bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={loading}
@@ -453,7 +507,7 @@ const MyCloset = () => {
             </form>
           </div>
 
-          {/* ✅ Closet Grid */}
+          {/* Closet Grid */}
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-xl font-semibold text-gray-700">
               👚 Your Closet ({closetItems.length} items)
@@ -463,6 +517,7 @@ const MyCloset = () => {
               placeholder="Search by name, category, color..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              disabled={loading}
               className="border border-gray-300 rounded-lg p-2 w-64 focus:ring-2 focus:ring-cyan-500"
             />
           </div>

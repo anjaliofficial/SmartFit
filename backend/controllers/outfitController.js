@@ -8,10 +8,14 @@ const ML_SERVICE_URL = "http://127.0.0.1:5001";
 
 /**
  * @desc Helper function to delete temporary files uploaded by multer
+ * NOTE: This is for files saved by Multer with a temporary destination 
+ * or files saved by the ML Service. It is NOT needed for the permanent 
+ * files saved by Multer's diskStorage to the 'uploads/' directory.
  */
 const cleanupTempFiles = (files) => {
     if (files && Array.isArray(files)) { 
         files.forEach((file) => {
+            // Check if the file path exists before attempting to delete
             if (file && file.path && fs.existsSync(file.path)) {
                 fs.unlink(file.path, (err) => {
                     if (err) console.error(`Failed to delete temp file ${file.path}:`, err);
@@ -22,27 +26,23 @@ const cleanupTempFiles = (files) => {
 };
 
 /**
- * @desc Helper to resolve the image path to be relative to the server's root 'uploads' folder
- */
-const getRelativeImagePath = (fullPath) => {
-    if (!fullPath) return "";
-    // Find the 'uploads' directory in the path string
-    const uploadsIndex = fullPath.indexOf('uploads' + path.sep);
-    if (uploadsIndex !== -1) {
-        // Return 'uploads/filename.jpg'
-        return fullPath.substring(uploadsIndex).replace(/\\/g, '/');
-    }
-    // Fallback if path is already relative (e.g., from combined_preview or simple filename)
-    return fullPath.replace(/\\/g, '/');
-};
-
-
-/**
  * @desc Upload clothing item(s), analyze via ML service, save metadata
  * @route POST /api/outfits/upload
  */
 export const uploadOutfit = async (req, res) => {
-    const cleanup = () => cleanupTempFiles(req.files);
+    const cleanup = () => {
+        // Only clean up the files if they were saved to a temporary location
+        // Since Multer is using diskStorage to 'uploads/', the files are permanent.
+        // We only clean files here if your ML service creates additional temporary files 
+        // that are also added to req.files or handled elsewhere.
+        // For standard Multer behavior, this cleanup is often skipped or handled differently.
+        // For safety, we leave it here, but it's often a source of confusion.
+        // If your Multer middleware does not save files to a temporary location, this is safe to keep 
+        // but remember req.files[].path gives the final path in diskStorage mode.
+        // We will proceed assuming your Multer configuration saves files directly 
+        // to 'uploads/' and req.files[].filename is the unique name.
+        // We will call cleanupTempFiles if you decide to use memoryStorage or if the ML service saves temporary files.
+    };
 
     try {
         const uploadedFiles = req.files;
@@ -52,7 +52,10 @@ export const uploadOutfit = async (req, res) => {
         }
 
         const formData = new FormData();
+        // IMPORTANT: When using diskStorage, Multer saves the file permanently. 
+        // We read from the saved file's path for the ML Service.
         uploadedFiles.forEach((file) => {
+            // Use file.path for the ReadStream, as Multer has created the file on disk.
             formData.append('files', fs.createReadStream(file.path), { filename: file.originalname });
         });
 
@@ -67,7 +70,9 @@ export const uploadOutfit = async (req, res) => {
             timeout: 120000,
         });
 
-        cleanup();
+        // We skip cleanup here, assuming Multer saved permanently. 
+        // If the ML service creates a temp file, handle its deletion separately.
+        // cleanup(); // You can uncomment this if needed for ML temporary files
 
         const data = mlResponse.data;
 
@@ -79,7 +84,7 @@ export const uploadOutfit = async (req, res) => {
             });
         }
 
-        // Flatten clothing items from categories
+        // --- ML Response Processing (Unchanged) ---
         let mlItems = [];
         if (data.clothing_items && typeof data.clothing_items === "object" && !Array.isArray(data.clothing_items)) {
             mlItems = Object.values(data.clothing_items).flat();
@@ -88,9 +93,11 @@ export const uploadOutfit = async (req, res) => {
         }
 
         const outfitsToSave = [];
+        // Assuming user ID is available via authentication middleware (req.user)
         const userId = req.user?.id || "670b8dfe7c7f123abc000001"; 
 
-        const combinedPreviewUrl = data.combined_preview ? getRelativeImagePath(data.combined_preview) : null;
+        const combinedPreviewUrl = data.combined_preview ? data.combined_preview.replace(/\\/g, '/') : null;
+
 
         uploadedFiles.forEach((file, index) => {
             let analysisItem = mlItems[index];
@@ -106,9 +113,18 @@ export const uploadOutfit = async (req, res) => {
 
             const chosenAnalysis = analysisItem || {};
             
-            // FIX: Use getRelativeImagePath to store the correct 'uploads/filename.jpg' path
-            const imagePathToSave = combinedPreviewUrl || getRelativeImagePath(file.path);
-
+            // 🚨 CRITICAL FIX: Construct the correct path for the DB
+            // Multer's diskStorage saves the file using the name in file.filename 
+            // into the 'uploads/' folder. We save 'uploads/filename.ext' to the DB.
+            let imagePathToSave;
+            if (combinedPreviewUrl) {
+                // If ML service returns a combined preview (e.g., 'uploads/preview.jpg')
+                imagePathToSave = combinedPreviewUrl;
+            } else {
+                // Use the filename generated by Multer
+                imagePathToSave = `uploads/${file.filename}`; 
+            }
+            
             outfitsToSave.push({
                 user: userId,
                 name: req.body.name || path.basename(file.originalname, path.extname(file.originalname)),
@@ -116,7 +132,7 @@ export const uploadOutfit = async (req, res) => {
                 color: req.body.color || chosenAnalysis.dominant_color_name || "unknown",
                 season: req.body.season || "all",
                 occasion: req.body.occasion || "casual",
-                // Store path relative to the root 'uploads' directory
+                // Store the correct relative path for frontend access
                 imageUrl: imagePathToSave, 
                 style: chosenAnalysis.style || "casual",
                 pattern: chosenAnalysis.pattern || "plain",
@@ -137,7 +153,7 @@ export const uploadOutfit = async (req, res) => {
         return res.status(200).json({ success: true, message: "Files analyzed, but no items saved." });
 
     } catch (err) {
-        cleanup();
+        // cleanup(); // Ensure temp files are cleaned in case of error
         console.error("❌ Upload error:", err);
 
         let errorMessage = err.message;
@@ -154,6 +170,12 @@ export const uploadOutfit = async (req, res) => {
         });
     }
 };
+
+// --- Helper function removed to simplify code ---
+// If the ML service returns a combined_preview path, you might need a simple helper:
+// const getRelativeImagePath = (fullPath) => fullPath ? fullPath.substring(fullPath.indexOf('uploads' + path.sep)).replace(/\\/g, '/') : "";
+
+// -----------------------------------------------------------------------------
 
 /**
  * @desc Get all outfits for a user
@@ -240,7 +262,7 @@ export const deleteOutfit = async (req, res) => {
         const imagePath = outfit.imageUrl;
         // The image path stored in DB is 'uploads/filename.jpg'
         if (imagePath && imagePath.startsWith("uploads/")) {
-            // We need to resolve the path relative to the current working directory (backend folder)
+            // Resolve the path relative to the current working directory (backend folder)
             const imageFullPath = path.resolve(path.join(process.cwd(), imagePath)); 
             
             if (fs.existsSync(imageFullPath)) {

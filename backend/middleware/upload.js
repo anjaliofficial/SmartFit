@@ -1,21 +1,37 @@
-import multer from 'multer';
-import path from 'path';
+// middleware/multerMiddleware.js
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Define the storage configuration
+// ✅ Convert import.meta.url to __dirname (ESM fix)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ Storage configuration
 const storage = multer.diskStorage({
-  // CRITICAL: Files are saved permanently to the 'uploads/' folder
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); 
+    cb(null, path.join(__dirname, "../uploads")); // absolute path
   },
-  // CRITICAL: Creates a unique filename (timestamp + field name + extension)
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    // This 'filename' value is what we save to the database
-    cb(null, Date.now() + '-' + file.fieldname + ext); 
+    cb(null, `${Date.now()}-${file.fieldname}${ext}`); // unique filename
   }
 });
 
-// ✅ FIX: Using 'export const' creates a named export
-export const upload = multer({ storage: storage });
+// ✅ File validation (optional but recommended)
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|webp|gif/;
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedTypes.test(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed!"));
+  }
+};
 
-// The file is ready to be imported using: import { upload } from "..."
+// ✅ Export as named export
+export const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // Max 5MB per image
+});

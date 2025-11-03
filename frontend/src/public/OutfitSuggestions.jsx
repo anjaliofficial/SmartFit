@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import Slider from "react-slick";
 import Header from "../components/HeaderAfterLogin";
-import Footer from "../components/Footer";
+import Footer from "../components/footer";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -11,6 +11,9 @@ const colorHarmony = {
   Olive: ["green", "brown", "mustard", "cream", "navy"],
   Deep: ["red", "purple", "black", "gold", "royalblue"],
 };
+
+const placeholderImg = "https://via.placeholder.com/150";
+const API_URL = "http://localhost:5000/api/outfits";
 
 const OutfitSuggestion = () => {
   const [closetItems, setClosetItems] = useState([]);
@@ -23,29 +26,50 @@ const OutfitSuggestion = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Fetch closet items
-  useEffect(() => {
-    const fetchClosetItems = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/outfits");
-        if (res.data.success) {
-          const itemsWithUrl = res.data.outfits.map((item) => ({
-            ...item,
-            image: item.imageUrl
-              ? `http://localhost:5000/${item.imageUrl}`
-              : "https://via.placeholder.com/150",
-          }));
-          setClosetItems(itemsWithUrl);
-        }
-      } catch (err) {
-        console.error("Failed to fetch closet items:", err);
-        alert("Error fetching your closet items");
-      }
-    };
-    fetchClosetItems();
-  }, []);
+  // Alert helper
+  const showAlert = useCallback((msg) => alert(msg), []);
 
-  // Camera & skin tone detection
+  // Fetch Closet Items
+  const fetchClosetItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not logged in!");
+
+      const res = await axios.get(API_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.success) {
+        const itemsWithUrl = (res.data.outfits || []).map((item) => ({
+          ...item,
+          images:
+            item.imageUrl && item.imageUrl.length
+              ? Array.isArray(item.imageUrl)
+                ? item.imageUrl.map((url) => `http://localhost:5000/${url}`)
+                : [`http://localhost:5000/${item.imageUrl}`]
+              : [placeholderImg],
+        }));
+        setClosetItems(itemsWithUrl);
+      }
+    } catch (err) {
+      console.error("Failed to fetch closet items:", err);
+      showAlert(
+        `Error fetching closet items: ${
+          err.response?.data?.message || err.message
+        }`
+      );
+      setClosetItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [showAlert]);
+
+  useEffect(() => {
+    fetchClosetItems();
+  }, [fetchClosetItems]);
+
+  // Camera
   const stopCamera = () => {
     if (videoRef.current?.srcObject)
       videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
@@ -63,14 +87,14 @@ const OutfitSuggestion = () => {
       await videoRef.current.play();
     } catch (err) {
       console.error(err);
-      alert("Cannot access camera. Check permissions.");
+      showAlert("Cannot access camera. Check permissions.");
     }
   };
 
   const capturePhoto = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return alert("Camera not started");
+    if (!video || !canvas) return showAlert("Camera not started");
 
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
@@ -80,7 +104,7 @@ const OutfitSuggestion = () => {
 
     canvas.toBlob(
       (blob) => {
-        if (!blob) return alert("Failed to capture photo");
+        if (!blob) return showAlert("Failed to capture photo");
         setFacePhoto(
           new File([blob], `face_${Date.now()}.jpg`, { type: "image/jpeg" })
         );
@@ -91,30 +115,32 @@ const OutfitSuggestion = () => {
   };
 
   const detectSkinTone = async () => {
-    if (!facePhoto) return alert("Capture a photo first!");
+    if (!facePhoto) return showAlert("Capture a photo first!");
     setLoading(true);
     try {
       await new Promise((res) => setTimeout(res, 500));
       const tones = ["Fair", "Olive", "Deep"];
       const mockTone = tones[Math.floor(Math.random() * tones.length)];
       setSkinTone(mockTone);
-      alert(`✅ Skin tone detected: ${mockTone}`);
+      showAlert(`✅ Skin tone detected: ${mockTone}`);
     } catch (err) {
       console.error(err);
-      alert("Failed to detect skin tone.");
+      showAlert("Failed to detect skin tone.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Select items
   const handleSelect = (i) =>
     setSelectedItems((prev) =>
       prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]
     );
 
+  // Generate outfits
   const generateOutfits = () => {
-    if (selectedItems.length < 2) return alert("Select at least 2 items!");
-    if (!skinTone) return alert("Detect skin tone first!");
+    if (selectedItems.length < 2) return showAlert("Select at least 2 items!");
+    if (!skinTone) return showAlert("Detect skin tone first!");
     setLoading(true);
 
     const items = selectedItems.map((i) => closetItems[i]);
@@ -137,7 +163,6 @@ const OutfitSuggestion = () => {
 
     let combos = combine();
 
-    // AI-style scoring
     combos = combos.map((combo) => {
       let score = 50;
       const feedback = [];
@@ -158,14 +183,16 @@ const OutfitSuggestion = () => {
     combos.sort((a, b) => b.score - a.score);
     setSuggestions(combos);
     setLoading(false);
-    if (combos.length > 0) alert(`🎉 ${combos.length} outfit(s) generated!`);
+    if (combos.length > 0)
+      showAlert(`🎉 ${combos.length} outfit(s) generated!`);
   };
 
   const handleWear = (outfit) => {
     localStorage.setItem("wearingNow", JSON.stringify(outfit));
-    alert("✅ Outfit saved to 'Wearing Now'!");
+    showAlert("✅ Outfit saved to 'Wearing Now'!");
   };
 
+  // Grouped items
   const groupedItems = closetItems.reduce((acc, item, idx) => {
     (acc[item.category] = acc[item.category] || []).push({ ...item, idx });
     return acc;
@@ -264,7 +291,7 @@ const OutfitSuggestion = () => {
                         }`}
                       >
                         <img
-                          src={item.image}
+                          src={item.images[0]}
                           alt={item.name}
                           className="w-full h-40 object-cover"
                         />
@@ -306,11 +333,25 @@ const OutfitSuggestion = () => {
                           key={i}
                           className="bg-gray-50 rounded-lg shadow-md p-2 w-40"
                         >
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-40 object-cover rounded-lg"
-                          />
+                          <Slider
+                            {...{
+                              dots: true,
+                              infinite: true,
+                              speed: 300,
+                              slidesToShow: 1,
+                              slidesToScroll: 1,
+                              arrows: true,
+                            }}
+                          >
+                            {item.images.map((img, idx) => (
+                              <img
+                                key={idx}
+                                src={img}
+                                alt={item.name}
+                                className="w-full h-40 object-cover rounded-lg"
+                              />
+                            ))}
+                          </Slider>
                           <p className="mt-2 font-semibold text-gray-700 truncate">
                             {item.name}
                           </p>

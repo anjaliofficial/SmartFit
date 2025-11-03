@@ -1,392 +1,191 @@
-import axios from "axios";
+// controllers/outfitController.js
 import fs from "fs";
 import path from "path";
-import FormData from "form-data";
-import Outfit from "../models/Outfit.js"; 
+import axios from "axios";
+import FormData from "form-data"; 
+import Outfit from "../models/Outfit.js";
+import fetch, { FormData as NodeFormData, fileFrom } from "node-fetch"; 
+import dotenv from 'dotenv';
+dotenv.config();
 
-const ML_SERVICE_URL = "http://127.0.0.1:5001";
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:5001";
+const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 
-/**
- * @desc Helper function to delete temporary files uploaded by multer
- * NOTE: This is for files saved by Multer with a temporary destination 
- * or files saved by the ML Service. It is NOT needed for the permanent 
- * files saved by Multer's diskStorage to the 'uploads/' directory.
- */
-const cleanupTempFiles = (files) => {
-    if (files && Array.isArray(files)) { 
-        files.forEach((file) => {
-            // Check if the file path exists before attempting to delete
-            if (file && file.path && fs.existsSync(file.path)) {
-                fs.unlink(file.path, (err) => {
-                    if (err) console.error(`Failed to delete temp file ${file.path}:`, err);
-                });
-            }
-        });
+// ------------------- Helper: Remove Background -------------------
+async function removeBackground(inputPath, outputPath, apiKey) {
+    if (!apiKey) throw new Error("Remove.bg API key missing in .env");
+    if (!fs.existsSync(inputPath)) {
+        console.warn(`Input file not found for background removal: ${inputPath}`);
+        return null; 
     }
-};
-
-/**
- * @desc Upload clothing item(s), analyze via ML service, save metadata
- * @route POST /api/outfits/upload
- */
-export const uploadOutfit = async (req, res) => {
-    const cleanup = () => {
-        // Only clean up the files if they were saved to a temporary location
-        // Since Multer is using diskStorage to 'uploads/', the files are permanent.
-        // We only clean files here if your ML service creates additional temporary files 
-        // that are also added to req.files or handled elsewhere.
-        // For standard Multer behavior, this cleanup is often skipped or handled differently.
-        // For safety, we leave it here, but it's often a source of confusion.
-        // If your Multer middleware does not save files to a temporary location, this is safe to keep 
-        // but remember req.files[].path gives the final path in diskStorage mode.
-        // We will proceed assuming your Multer configuration saves files directly 
-        // to 'uploads/' and req.files[].filename is the unique name.
-        // We will call cleanupTempFiles if you decide to use memoryStorage or if the ML service saves temporary files.
-    };
 
     try {
-        const uploadedFiles = req.files;
+        const form = new NodeFormData();
+        const file = await fileFrom(inputPath); 
+        form.append("image_file", file, path.basename(inputPath));
+        form.append("size", "auto");
 
-        if (!uploadedFiles || uploadedFiles.length === 0) {
+        const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+            method: "POST",
+            headers: { "X-Api-Key": apiKey },
+            body: form,
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            let errorMessage = `Remove.bg API error: ${response.status}`;
+            try {
+                const errorData = JSON.parse(text);
+                errorMessage += ` - ${errorData.errors?.[0]?.title || text}`;
+            } catch {
+                errorMessage += ` - ${text}`;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        fs.writeFileSync(outputPath, buffer);
+
+        // Return relative path (frontend compatible)
+        return path.relative(process.cwd(), outputPath).replace(/\\/g, "/");
+    } catch (err) {
+        console.error("Background removal service failed:", err.message);
+        return null; 
+    }
+}
+
+// ------------------- Upload Outfit -------------------
+export const uploadOutfit = async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
             return res.status(400).json({ success: false, message: "No files uploaded" });
         }
 
-        const formData = new FormData();
-        // IMPORTANT: When using diskStorage, Multer saves the file permanently. 
-        // We read from the saved file's path for the ML Service.
-        uploadedFiles.forEach((file) => {
-            // Use file.path for the ReadStream, as Multer has created the file on disk.
-            formData.append('files', fs.createReadStream(file.path), { filename: file.originalname });
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized. Login required." });
+        }
+
+        const processedDir = path.join(UPLOAD_DIR, "processed");
+        if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir, { recursive: true });
+
+        // Prepare ML Service Data
+        const mlForm = new FormData();
+        req.files.forEach(file => mlForm.append("files", fs.createReadStream(file.path), { filename: file.originalname }));
+        ["occasion", "season", "name", "category"].forEach(field => {
+            mlForm.append(field, req.body[field] || (field === "occasion" ? "Casual" : "all"));
         });
 
-        formData.append("occasion", req.body.occasion || "Casual"); 
-        formData.append("season", req.body.season || "all");
-        formData.append("name", req.body.name || "Unnamed Item");
-        formData.append("category", req.body.category || "Others"); 
-
-        // Send files to ML service for analysis
-        const mlResponse = await axios.post(`${ML_SERVICE_URL}/analyze`, formData, {
-            headers: formData.getHeaders(),
+        const mlResponse = await axios.post(`${ML_SERVICE_URL}/analyze`, mlForm, {
+            headers: mlForm.getHeaders(),
             timeout: 120000,
         });
 
-        // We skip cleanup here, assuming Multer saved permanently. 
-        // If the ML service creates a temp file, handle its deletion separately.
-        // cleanup(); // You can uncomment this if needed for ML temporary files
-
-        const data = mlResponse.data;
-
-        if (!data.success) {
-            return res.status(500).json({
-                success: false,
-                message: "ML service failed to analyze images",
-                error: data.error || "Unknown error from ML service",
-            });
+        if (!mlResponse.data.success) {
+            console.error("ML Service Error:", mlResponse.data.error);
+            return res.status(500).json({ success: false, message: "ML service failed", error: mlResponse.data.error });
         }
 
-        // --- ML Response Processing (Unchanged) ---
-        let mlItems = [];
-        if (data.clothing_items && typeof data.clothing_items === "object" && !Array.isArray(data.clothing_items)) {
-            mlItems = Object.values(data.clothing_items).flat();
-        } else if (Array.isArray(data.clothing_items)) {
-            mlItems = data.clothing_items;
-        }
+        const mlItems = Array.isArray(mlResponse.data.clothing_items)
+            ? mlResponse.data.clothing_items
+            : Object.values(mlResponse.data.clothing_items || {}).flat();
 
         const outfitsToSave = [];
-        // Assuming user ID is available via authentication middleware (req.user)
-        const userId = req.user?.id || "670b8dfe7c7f123abc000001"; 
 
-        const combinedPreviewUrl = data.combined_preview ? data.combined_preview.replace(/\\/g, '/') : null;
+        for (let i = 0; i < req.files.length; i++) {
+            const file = req.files[i];
+            const analysisItem = mlItems[i] || {};
+            let finalImagePath = path.join("uploads", file.filename).replace(/\\/g, "/");
 
-
-        uploadedFiles.forEach((file, index) => {
-            let analysisItem = mlItems[index];
-
-            // Fallback: match by filename substring
-            if (!analysisItem && mlItems.length > 0) {
-                const origName = (file.originalname || "").toLowerCase();
-                analysisItem = mlItems.find(mi => {
-                    const fname = (mi.filename || mi.name || "").toLowerCase();
-                    return fname && origName && fname.includes(origName);
-                });
+            // Optional background removal
+            if (process.env.REMOVEBG_API_KEY) {
+                const outputPath = path.join(processedDir, `bg_removed_${Date.now()}_${file.originalname}`);
+                const bgRemovedPath = await removeBackground(file.path, outputPath, process.env.REMOVEBG_API_KEY);
+                if (bgRemovedPath) finalImagePath = bgRemovedPath;
             }
 
-            const chosenAnalysis = analysisItem || {};
-            
-            // 🚨 CRITICAL FIX: Construct the correct path for the DB
-            // Multer's diskStorage saves the file using the name in file.filename 
-            // into the 'uploads/' folder. We save 'uploads/filename.ext' to the DB.
-            let imagePathToSave;
-            if (combinedPreviewUrl) {
-                // If ML service returns a combined preview (e.g., 'uploads/preview.jpg')
-                imagePathToSave = combinedPreviewUrl;
-            } else {
-                // Use the filename generated by Multer
-                imagePathToSave = `uploads/${file.filename}`; 
-            }
-            
+            // Clean up temp file
+            try { fs.unlinkSync(file.path); } catch { /* ignore */ }
+
             outfitsToSave.push({
                 user: userId,
                 name: req.body.name || path.basename(file.originalname, path.extname(file.originalname)),
-                category: req.body.category || chosenAnalysis.category || "Others",
-                color: req.body.color || chosenAnalysis.dominant_color_name || "unknown",
+                category: req.body.category || analysisItem.category || "Others",
+                color: req.body.color || analysisItem.dominant_color_name || "unknown",
                 season: req.body.season || "all",
                 occasion: req.body.occasion || "casual",
-                // Store the correct relative path for frontend access
-                imageUrl: imagePathToSave, 
-                style: chosenAnalysis.style || "casual",
-                pattern: chosenAnalysis.pattern || "plain",
-                dominantColors: chosenAnalysis.dominant_colors || [],
-            });
-        });
-
-        if (outfitsToSave.length > 0) {
-            const savedOutfits = await Outfit.insertMany(outfitsToSave);
-            return res.status(201).json({
-                success: true,
-                message: "Outfits uploaded & analyzed successfully",
-                outfits: savedOutfits,
-                combined_preview: combinedPreviewUrl 
+                imageUrl: finalImagePath,
+                style: analysisItem.style || "casual",
+                pattern: analysisItem.pattern || "plain",
+                dominantColors: analysisItem.dominant_colors || [],
             });
         }
 
-        return res.status(200).json({ success: true, message: "Files analyzed, but no items saved." });
-
+        const savedOutfits = await Outfit.insertMany(outfitsToSave);
+        return res.status(201).json({ success: true, message: "Outfits uploaded successfully", outfits: savedOutfits });
     } catch (err) {
-        // cleanup(); // Ensure temp files are cleaned in case of error
-        console.error("❌ Upload error:", err);
-
-        let errorMessage = err.message;
-        if (axios.isAxiosError(err) && err.response) {
-            errorMessage = `ML Service Error (${err.response.status}): ${JSON.stringify(err.response.data)}`;
-        } else if (axios.isAxiosError(err)) {
-            errorMessage = `ML Service Connection Error: ${err.code}`;
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "Error processing upload or connecting to ML service",
-            error: errorMessage,
-        });
+        console.error("Upload Outfit Error:", err.stack);
+        return res.status(500).json({ success: false, message: "Server error during upload", error: err.message });
     }
 };
 
-// --- Helper function removed to simplify code ---
-// If the ML service returns a combined_preview path, you might need a simple helper:
-// const getRelativeImagePath = (fullPath) => fullPath ? fullPath.substring(fullPath.indexOf('uploads' + path.sep)).replace(/\\/g, '/') : "";
-
-// -----------------------------------------------------------------------------
-
-/**
- * @desc Get all outfits for a user
- * @route GET /api/outfits
- */
+// ------------------- Get All Outfits -------------------
 export const getAllOutfits = async (req, res) => {
     try {
-        const userId = req.user?.id || "670b8dfe7c7f123abc000001"; 
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
         const outfits = await Outfit.find({ user: userId }).sort({ createdAt: -1 });
-        
-        return res.status(200).json({ success: true, outfits: outfits }); 
+        res.status(200).json({ success: true, outfits });
     } catch (err) {
-        return res.status(500).json({
-            success: false,
-            message: "Failed to fetch outfits",
-            error: err.message,
-        });
+        console.error("Get All Outfits Error:", err);
+        res.status(500).json({ success: false, message: "Failed to fetch outfits", error: err.message });
     }
 };
 
-/**
- * @desc Update a clothing item's metadata (e.g., name, category, color)
- * @route PUT /api/outfits/:id
- */
+// ------------------- Update Outfit -------------------
 export const updateOutfit = async (req, res) => {
     try {
-        const outfitId = req.params.id;
-        const userId = req.user?.id || "670b8dfe7c7f123abc000001";
-        
-        const outfit = await Outfit.findById(outfitId);
-        if (!outfit) return res.status(404).json({ success: false, message: "Outfit item not found" });
+        const outfit = await Outfit.findById(req.params.id);
+        if (!outfit) return res.status(404).json({ success: false, message: "Outfit not found" });
 
-        if (outfit.user.toString() !== userId) {
-            return res.status(401).json({ success: false, message: "Not authorized to update this item" });
+        if (outfit.user.toString() !== req.user?.id) {
+            return res.status(401).json({ success: false, message: "Not authorized" });
         }
-        
-        const updateFields = {
-            name: req.body.name,
-            category: req.body.category,
-            color: req.body.color,
-            season: req.body.season,
-            occasion: req.body.occasion,
-        };
 
-        const sanitizedUpdates = Object.fromEntries(
-            Object.entries(updateFields).filter(([_, v]) => v !== undefined && v !== null && v !== "")
-        );
-
-        const updatedOutfit = await Outfit.findByIdAndUpdate(
-            outfitId,
-            { $set: sanitizedUpdates },
-            { new: true, runValidators: true }
-        );
-
-        return res.status(200).json({ success: true, outfit: updatedOutfit, message: "Outfit item updated successfully" });
-
-    } catch (err) {
-        console.error("❌ Update error:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to update outfit item",
-            error: err.message,
+        const updates = {};
+        ["name", "category", "color", "season", "occasion", "style", "pattern"].forEach(field => {
+            if (req.body[field] !== undefined) updates[field] = req.body[field];
         });
+
+        const updatedOutfit = await Outfit.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
+        res.status(200).json({ success: true, outfit: updatedOutfit });
+    } catch (err) {
+        console.error("Update Outfit Error:", err);
+        res.status(500).json({ success: false, message: "Update failed", error: err.message });
     }
 };
 
-/**
- * @desc Delete an outfit
- * @route DELETE /api/outfits/:id
- */
+// ------------------- Delete Outfit -------------------
 export const deleteOutfit = async (req, res) => {
     try {
-        const outfitId = req.params.id;
-        const userId = req.user?.id || "670b8dfe7c7f123abc000001";
-        
-        const outfit = await Outfit.findById(outfitId);
-        if (!outfit) return res.status(404).json({ success: false, message: "Outfit item not found" });
-        
-        if (outfit.user.toString() !== userId) {
-            return res.status(401).json({ success: false, message: "Not authorized to delete this outfit" });
+        const outfit = await Outfit.findById(req.params.id);
+        if (!outfit) return res.status(404).json({ success: false, message: "Outfit not found" });
+
+        if (outfit.user.toString() !== req.user?.id) {
+            return res.status(401).json({ success: false, message: "Not authorized" });
         }
 
-        // Delete local image file if exists
-        const imagePath = outfit.imageUrl;
-        // The image path stored in DB is 'uploads/filename.jpg'
-        if (imagePath && imagePath.startsWith("uploads/")) {
-            // Resolve the path relative to the current working directory (backend folder)
-            const imageFullPath = path.resolve(path.join(process.cwd(), imagePath)); 
-            
-            if (fs.existsSync(imageFullPath)) {
-                fs.unlink(imageFullPath, (err) => {
-                    if (err) console.error("Failed to delete permanent file:", imageFullPath, err);
-                });
-            }
+        if (outfit.imageUrl) {
+            const fullImagePath = path.join(process.cwd(), outfit.imageUrl);
+            if (fs.existsSync(fullImagePath)) fs.unlinkSync(fullImagePath);
         }
 
-        await Outfit.findByIdAndDelete(outfitId);
-
-        return res.status(200).json({ success: true, message: "Outfit deleted successfully" });
+        await Outfit.findByIdAndDelete(req.params.id);
+        res.status(200).json({ success: true, message: "Outfit deleted" });
     } catch (err) {
-        console.error("❌ Delete error:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to delete outfit",
-            error: err.message,
-        });
+        console.error("Delete Outfit Error:", err);
+        res.status(500).json({ success: false, message: "Delete failed", error: err.message });
     }
-};// controllers/outfitController.js
-import fs from "fs";
-import path from "path";
-import fetch, { FormData, fileFrom } from "node-fetch";
-
-// ------------------- Remove Background Function -------------------
-async function removeBackground(inputPath, outputPath, apiKey) {
-  const absInput = path.resolve(inputPath);
-  const absOutput = path.resolve(outputPath);
-
-  console.log("removeBackground called:", { absInput, absOutput });
-
-  if (!apiKey) {
-    throw new Error("Remove.bg API key missing. Set REMOVEBG_API_KEY in .env");
-  }
-
-  if (!fs.existsSync(absInput)) {
-    throw new Error(`Input file not found: ${absInput}`);
-  }
-
-  try {
-    const form = new FormData();
-    const file = await fileFrom(absInput); // ensures correct metadata
-    form.append("image_file", file, path.basename(absInput));
-    form.append("size", "auto");
-
-    console.log("Sending request to remove.bg...");
-    const response = await fetch("https://api.remove.bg/v1.0/removebg", {
-      method: "POST",
-      headers: {
-        "X-Api-Key": apiKey,
-      },
-      body: form,
-    });
-
-    console.log("Remove.bg response status:", response.status, response.statusText);
-
-    const contentType = response.headers.get("content-type") || "";
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Remove.bg error body:", text);
-      throw new Error(`Remove.bg API error: ${response.status} - ${text}`);
-    }
-
-    if (contentType.includes("application/json")) {
-      const json = await response.json();
-      console.error("Remove.bg returned JSON (unexpected):", json);
-      throw new Error(
-        "Remove.bg returned JSON instead of an image: " + JSON.stringify(json)
-      );
-    }
-
-    // Save processed image
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    fs.writeFileSync(absOutput, buffer);
-    console.log("Saved processed image:", absOutput, "size:", buffer.length);
-
-    return absOutput;
-  } catch (err) {
-    console.error("removeBackground failed:", err);
-    throw err;
-  }
-}
-
-// ------------------- Upload Outfit Controller -------------------
-export const uploadOutfit = async (req, res) => {
-  try {
-    if (!req.files || Object.keys(req.files).length === 0) {
-      return res.status(400).json({ success: false, message: "No files uploaded" });
-    }
-
-    const result = {};
-    const processedDir = path.join("uploads", "processed");
-    if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir, { recursive: true });
-
-    // Loop through uploaded files
-    for (const key of Object.keys(req.files)) {
-      const file = req.files[key][0];
-      const inputPath = file.path;
-      const outputFileName = `${Date.now()}_${file.originalname}`;
-      const outputPath = path.join(processedDir, outputFileName);
-
-      console.log(`${key} input path:`, inputPath);
-      console.log(`${key} output path:`, outputPath);
-
-      try {
-        await removeBackground(inputPath, outputPath, process.env.REMOVEBG_API_KEY);
-        console.log(`${key} background removed successfully`);
-        result[key] = `/uploads/processed/${outputFileName}`;
-      } catch (bgErr) {
-        console.error(`${key} Remove.bg failed:`, bgErr);
-        return res.status(500).json({
-          success: false,
-          message: `Background removal failed for ${key}`,
-          error: bgErr.toString(),
-        });
-      }
-    }
-
-    return res.json({ success: true, data: result });
-  } catch (err) {
-    console.error("Upload outfit error:", err);
-    return res.status(500).json({ success: false, message: "Server error", error: err.toString() });
-  }
 };

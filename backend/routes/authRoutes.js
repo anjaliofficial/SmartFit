@@ -1,25 +1,26 @@
-const express = require("express");
+// routes/authRoutes.js
+import express from "express";
 const router = express.Router();
-const {
+
+import {
   registerUser,
   loginUser,
   forgotPassword,
   resetPasswordWithToken,
   getProfile,
-  updateProfile
-} = require("../controllers/authController");
+  updateProfile,
+} from "../controllers/authController.js";
 
-// import default exported middleware
-const protect = require("../middleware/authMiddleware");
+// ✅ CORRECT: Importing the default export (protect)
+import { protect } from "../middleware/authMiddleware.js";
 
-// Routes
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPasswordWithToken);
 
-// Use `protect` middleware
+// Protected routes using the imported 'protect' middleware
 router.get("/profile", protect, getProfile);
 router.put("/update-profile", protect, updateProfile);
 
-module.exports = router;
+export default router;

@@ -1,10 +1,11 @@
-const mongoose = require("mongoose");
+// models/User.js (Corrected for ES Modules)
+import mongoose from "mongoose"; // Changed from require()
 
 const userSchema = new mongoose.Schema({
   name: { 
     type: String, 
-    required: true,   // Make it mandatory
-    trim: true        // Remove extra spaces
+    required: true, 
+    trim: true 
   },
   email: { 
     type: String, 
@@ -23,6 +24,9 @@ const userSchema = new mongoose.Schema({
   resetTokenExpiry: { 
     type: Date 
   }
-}, { timestamps: true }); // optional: adds createdAt & updatedAt
+}, { timestamps: true });
 
-module.exports = mongoose.model("User", userSchema);
+// CHANGED: Use ES Module default export
+const User = mongoose.model("User", userSchema);
+
+export default User;

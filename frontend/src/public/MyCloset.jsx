@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import Header from "../components/HeaderAfterLogin";
-import Footer from "../components/Footer";
+import Footer from "../components/footer";
 
 const placeholderImg = "/placeholder.png";
 const API_URL = "http://localhost:5000/api/outfits";
@@ -52,7 +52,7 @@ const MyCloset = () => {
   const seasons = ["Summer", "Winter", "Spring", "Autumn"];
   const occasions = ["Casual", "Formal", "Party", "Outdoor", "Work", "Other"];
 
-  // Helper to display messages
+  // ---------------- Helper: Display Messages ----------------
   const displayMessage = useCallback((text, type = "success") => {
     setAppMessage({ text, type });
     const timeout = setTimeout(
@@ -62,6 +62,7 @@ const MyCloset = () => {
     return () => clearTimeout(timeout);
   }, []);
 
+  // ---------------- Cancel Edit ----------------
   const handleCancelEdit = () => {
     setEditingIndex(null);
     setFormData({
@@ -77,6 +78,7 @@ const MyCloset = () => {
     displayMessage("Edit cancelled.", "info");
   };
 
+  // ---------------- Convert Files to Base64 ----------------
   const convertToBase64 = (files) =>
     Promise.all(
       Array.from(files).map(
@@ -90,6 +92,7 @@ const MyCloset = () => {
       )
     );
 
+  // ---------------- Handle Form Input Change ----------------
   const handleChange = async (e) => {
     const { name, value, files } = e.target;
     if (name === "images" && files && files.length > 0) {
@@ -102,11 +105,16 @@ const MyCloset = () => {
     }
   };
 
-  // Fetch closet items
+  // ---------------- Fetch Closet Items ----------------
   const fetchClosetItems = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(API_URL, { withCredentials: true });
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found. Please login.");
+
+      const response = await axios.get(API_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const outfits = response.data.outfits || [];
       const validOutfits = outfits.filter(
         (item) => item && typeof item === "object" && item.name
@@ -114,7 +122,12 @@ const MyCloset = () => {
       setClosetItems(validOutfits);
     } catch (error) {
       console.error("Error fetching closet items:", error);
-      displayMessage("Failed to load closet items. Check backend.", "error");
+      displayMessage(
+        `Failed to load closet items. ${
+          error.response?.data?.message || error.message
+        }`,
+        "error"
+      );
       setClosetItems([]);
     } finally {
       setLoading(false);
@@ -125,7 +138,16 @@ const MyCloset = () => {
     fetchClosetItems();
   }, [fetchClosetItems]);
 
-  // Add or Update item
+  // ---------------- Generate Preview URLs ----------------
+  const getPreviewUrls = (item) => {
+    if (!item.imageUrl) return [placeholderImg];
+    if (Array.isArray(item.imageUrl)) {
+      return item.imageUrl.map((url) => `http://localhost:5000/${url}`);
+    }
+    return [`http://localhost:5000/${item.imageUrl}`];
+  };
+
+  // ---------------- Add or Update Item ----------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -148,14 +170,19 @@ const MyCloset = () => {
     }
 
     try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found. Please login.");
+
       if (isNewItem) {
         const data = new FormData();
         Object.entries(formData).forEach(([key, val]) => data.append(key, val));
         selectedFiles.forEach((file) => data.append("item_images", file));
 
         const response = await axios.post(`${API_URL}/upload`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true,
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
           onUploadProgress: (e) =>
             setUploadProgress(Math.round((e.loaded * 100) / e.total)),
         });
@@ -170,7 +197,9 @@ const MyCloset = () => {
         const response = await axios.put(
           `${API_URL}/${itemToUpdate._id}`,
           formData,
-          { withCredentials: true }
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
         setClosetItems((prev) => {
           const updated = [...prev];
@@ -205,6 +234,7 @@ const MyCloset = () => {
     }
   };
 
+  // ---------------- Edit Item ----------------
   const handleEdit = (index) => {
     const item = closetItems[index];
     if (!item) return;
@@ -216,30 +246,40 @@ const MyCloset = () => {
       occasion: item.occasion || "",
     });
     setSelectedFiles([]);
-    setImagePreviews([]);
+    setImagePreviews(getPreviewUrls(item));
     setEditingIndex(index);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ---------------- Delete Item ----------------
   const handleDelete = async (index) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
     setLoading(true);
     const itemToDelete = closetItems[index];
+
     try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found. Please login.");
+
       await axios.delete(`${API_URL}/${itemToDelete._id}`, {
-        withCredentials: true,
+        headers: { Authorization: `Bearer ${token}` },
       });
       setClosetItems((prev) => prev.filter((_, i) => i !== index));
       displayMessage("Item deleted successfully!", "success");
     } catch (error) {
       console.error("Error deleting item:", error);
-      displayMessage("Failed to delete item.", "error");
+      displayMessage(
+        `Failed to delete item. ${
+          error.response?.data?.message || error.message
+        }`,
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter items
+  // ---------------- Filter Items ----------------
   const filteredItems = closetItems.filter((item) => {
     if (!item || typeof item !== "object") return false;
     const s = search.toLowerCase();
@@ -250,25 +290,25 @@ const MyCloset = () => {
     );
   });
 
-  // Resolve image URL
-  const getImageUrl = (item) => {
-    if (!item.imageUrl) return placeholderImg;
-    const filename = item.imageUrl.split("/").pop();
-    return `http://localhost:5000/uploads/${filename}`;
-  };
-
   const renderItem = (item, index) => {
     if (!item || !item._id) return null;
+    const previewUrls = getPreviewUrls(item);
+
     return (
       <div
         key={item._id}
         className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group"
       >
-        <ImageRenderer
-          imageUrl={getImageUrl(item)}
-          altText={item.name || "Unnamed Item"}
-          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+        <div className="grid grid-cols-1 gap-1">
+          {previewUrls.map((url, i) => (
+            <ImageRenderer
+              key={i}
+              imageUrl={url}
+              altText={item.name || "Unnamed Item"}
+              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ))}
+        </div>
         <div className="p-4">
           <h3 className="font-medium text-gray-800">
             {item.name || "Unnamed"}
@@ -357,152 +397,101 @@ const MyCloset = () => {
               onSubmit={handleSubmit}
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5"
             >
-              {/* Form Inputs */}
-              <div>
-                <label className="block text-gray-600 mb-2">Item Name *</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="e.g., White Sneakers"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-2">Category *</label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
-                  required
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-2">Color</label>
-                <input
-                  type="text"
-                  name="color"
-                  value={formData.color}
-                  onChange={handleChange}
-                  placeholder="e.g., Blue, Black"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-2">Season</label>
-                <select
-                  name="season"
-                  value={formData.season}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
-                >
-                  <option value="">Optional</option>
-                  {seasons.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-600 mb-2">Occasion</label>
-                <select
-                  name="occasion"
-                  value={formData.occasion}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-cyan-500"
-                >
-                  <option value="">Optional</option>
-                  {occasions.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-span-1 md:col-span-3">
-                <label className="block text-gray-600 mb-2">
-                  Upload Images (Max 5) {editingIndex === null && "*"}
-                </label>
-                <input
-                  type="file"
-                  name="images"
-                  accept="image/*"
-                  multiple
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-2"
-                  disabled={editingIndex !== null}
-                />
-                {editingIndex !== null && (
-                  <p className="text-sm text-red-500 mt-1">
-                    Edit mode: Image cannot be changed. Delete and re-add to
-                    change the photo.
-                  </p>
-                )}
-              </div>
-
-              {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="col-span-3">
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-cyan-600 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Uploading: {uploadProgress}%
-                  </p>
-                </div>
-              )}
-
+              <input
+                type="text"
+                name="name"
+                placeholder="Item Name"
+                value={formData.name}
+                onChange={handleChange}
+                className="border p-2 rounded-lg w-full"
+                required
+              />
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="border p-2 rounded-lg w-full"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                name="color"
+                placeholder="Color"
+                value={formData.color}
+                onChange={handleChange}
+                className="border p-2 rounded-lg w-full"
+              />
+              <select
+                name="season"
+                value={formData.season}
+                onChange={handleChange}
+                className="border p-2 rounded-lg w-full"
+              >
+                <option value="">Select Season</option>
+                {seasons.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="occasion"
+                value={formData.occasion}
+                onChange={handleChange}
+                className="border p-2 rounded-lg w-full"
+              >
+                <option value="">Select Occasion</option>
+                {occasions.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="file"
+                name="images"
+                multiple
+                accept="image/*"
+                onChange={handleChange}
+                disabled={loading}
+                className="border p-2 rounded-lg w-full col-span-1 sm:col-span-2 md:col-span-3"
+              />
               {imagePreviews.length > 0 && (
-                <div className="col-span-3">
-                  <p className="text-sm text-gray-600 mb-2">Preview:</p>
-                  <div className="flex flex-wrap gap-3">
-                    {imagePreviews.map((img, i) => (
-                      <img
-                        key={i}
-                        src={img}
-                        alt={`preview-${i}`}
-                        className="w-28 h-28 object-cover rounded-xl border-2 border-cyan-400"
-                      />
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-2 col-span-1 sm:col-span-2 md:col-span-3">
+                  {imagePreviews.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover rounded-lg"
+                    />
+                  ))}
                 </div>
               )}
-
-              <div className="col-span-3 flex justify-center space-x-4">
+              <div className="col-span-1 sm:col-span-2 md:col-span-3 flex gap-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-cyan-600 text-white py-2 px-4 rounded-lg hover:bg-cyan-700 transition"
+                >
+                  {editingIndex !== null ? "Update Item" : "Add Item"}
+                </button>
                 {editingIndex !== null && (
                   <button
                     type="button"
                     onClick={handleCancelEdit}
-                    disabled={loading}
-                    className="mt-4 bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                    className="bg-gray-400 text-white py-2 px-4 rounded-lg hover:bg-gray-500 transition"
                   >
-                    Cancel Edit
+                    Cancel
                   </button>
                 )}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-                >
-                  {loading
-                    ? "Saving..."
-                    : editingIndex !== null
-                    ? "Update Item"
-                    : "Add Item"}
-                </button>
               </div>
             </form>
           </div>

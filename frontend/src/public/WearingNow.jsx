@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import Header from "../components/HeaderAfterLogin";
-import Footer from "../components/Footer";
+import Footer from "../components/footer";
 
 const WearingNow = () => {
-  // outfit state now holds the array of item objects (item.items)
   const [outfitItems, setOutfitItems] = useState([]);
-  // We can optionally store the full outfit object (including score/feedback)
   const [fullOutfit, setFullOutfit] = useState(null);
+
+  // 👇 Change this to your backend base URL
+  const BASE_URL = "http://localhost:5000";
 
   useEffect(() => {
     const savedString = localStorage.getItem("wearingNow");
@@ -14,14 +15,10 @@ const WearingNow = () => {
       try {
         const savedOutfit = JSON.parse(savedString);
 
-        // 🚨 CRITICAL FIX: The data saved by handleWear in OutfitSuggestion
-        // is an object {items: [...], score: ..., feedback: ...}. We must extract
-        // the 'items' array.
         if (savedOutfit && Array.isArray(savedOutfit.items)) {
           setOutfitItems(savedOutfit.items);
           setFullOutfit(savedOutfit);
         } else if (Array.isArray(savedOutfit)) {
-          // Fallback for older/simpler saved structure (if it was just the array)
           setOutfitItems(savedOutfit);
           setFullOutfit({
             items: savedOutfit,
@@ -29,7 +26,6 @@ const WearingNow = () => {
             feedback: "Directly saved items.",
           });
         } else {
-          // Case where it's an empty object or invalid structure
           setOutfitItems([]);
           setFullOutfit(null);
         }
@@ -47,6 +43,27 @@ const WearingNow = () => {
   };
 
   const hasOutfit = outfitItems.length > 0;
+
+  const getImageUrl = (item) => {
+    if (!item) return "/placeholder.png";
+
+    // Case 1: base64 image (directly usable)
+    if (item.image && item.image.startsWith("data:image")) {
+      return item.image;
+    }
+
+    // Case 2: full URL already
+    if (item.imageUrl && item.imageUrl.startsWith("http")) {
+      return item.imageUrl;
+    }
+
+    // Case 3: relative path (e.g. "uploads/image.png")
+    if (item.imageUrl && !item.imageUrl.startsWith("http")) {
+      return `${BASE_URL}/${item.imageUrl.replace(/\\/g, "/")}`;
+    }
+
+    return "/placeholder.png";
+  };
 
   return (
     <>
@@ -71,7 +88,6 @@ const WearingNow = () => {
             </div>
           ) : (
             <div className="bg-white p-6 rounded-2xl shadow-xl">
-              {/* Display Score and Feedback if available */}
               {fullOutfit && fullOutfit.score && (
                 <div className="mb-6 border-b pb-4">
                   <p className="text-xl font-bold text-gray-700">
@@ -83,23 +99,27 @@ const WearingNow = () => {
                   </p>
                 </div>
               )}
+
               <div className="flex flex-wrap justify-center gap-8">
-                {/* Map over outfitItems state */}
                 {outfitItems.map((item, i) => (
                   <div
                     key={i}
                     className="bg-gray-50 shadow-md p-4 rounded-2xl w-44 hover:shadow-lg transition border border-gray-200"
                   >
                     <img
-                      src={item.image}
-                      // item.image contains the Base64 string for display
-                      alt={item.name}
+                      src={getImageUrl(item)}
+                      alt={item?.name || "Outfit Item"}
                       className="w-40 h-40 object-cover rounded-xl"
+                      onError={(e) => {
+                        e.target.src = "/placeholder.png";
+                      }}
                     />
                     <h3 className="mt-3 text-gray-700 font-medium truncate">
-                      {item.name || "Unnamed Item"}
+                      {item?.name || "Unnamed Item"}
                     </h3>
-                    <p className="text-gray-500 text-sm">{item.category}</p>
+                    <p className="text-gray-500 text-sm">
+                      {item?.category || "Unknown"}
+                    </p>
                   </div>
                 ))}
               </div>

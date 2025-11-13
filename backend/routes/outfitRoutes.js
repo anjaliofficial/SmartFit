@@ -1,16 +1,22 @@
+// routes/outfitRoutes.js
 import express from "express";
 import { upload } from "../middleware/upload.js";
 import { protect } from "../middleware/authMiddleware.js";
 import {
-  uploadOutfit,
-  getAllOutfits,
-  deleteOutfit
+  getOutfits,
+  createOutfit,
+  updateOutfit,
+  deleteOutfit,
 } from "../controllers/outfitController.js";
+
+// Example Express setup
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const router = express.Router();
 
-router.post("/upload", protect, upload.array("item_images", 5), uploadOutfit);
-router.get("/", protect, getAllOutfits);
+router.get("/", protect, getOutfits);
+router.post("/", protect, upload.array("item_images", 5), createOutfit);
+router.put("/:id", protect, updateOutfit);
 router.delete("/:id", protect, deleteOutfit);
 
 export default router;

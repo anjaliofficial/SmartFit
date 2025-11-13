@@ -1,16 +1,58 @@
+// models/Outfit.js
 import mongoose from "mongoose";
 
-const OutfitSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  name: { type: String, trim: true, default: "Unnamed Item" },
-  category: { type: String, required: true },
-  imageUrl: { type: String, required: true }, 
-  color: { type: String },
-  season: { type: String, default: "all" },
-  occasion: { type: String, default: "casual" },
-  style: { type: String },
-  pattern: { type: String },
-  dominantColors: [Array],
-}, { timestamps: true });
+const outfitSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+    category: {
+      type: String,
+      required: true,
+      enum: ["top", "bottom", "footwear", "accessory", "outerwear", "others"],
+      default: "others",
+    },
+    color: {
+      type: String,
+      default: "unknown",
+    },
+    season: {
+      type: String,
+      enum: ["spring", "summer", "fall", "winter", "all"],
+      default: "all",
+    },
+    occasion: {
+      type: String,
+      enum: ["casual", "work", "formal", "sport", "party"],
+      default: "casual",
+    },
+    imageUrl: {
+      type: String,
+      required: true,
+    },
+    style: {
+      type: String,
+      default: "casual",
+    },
+    pattern: {
+      type: String,
+      default: "plain",
+    },
+    dominantColors: [String],
+  },
+  {
+    timestamps: true,
+  }
+);
 
-export default mongoose.model('Outfit', OutfitSchema);
+const Outfit = mongoose.model("Outfit", outfitSchema);
+
+export default Outfit;
